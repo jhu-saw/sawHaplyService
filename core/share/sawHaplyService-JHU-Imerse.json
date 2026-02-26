@@ -1,0 +1,15 @@
+{
+    "uri": "ws://localhost:10001",
+    "devices": [
+        {
+            "name": "Left",
+            "base_serial": "05E4",
+            "stylus_serial": "1237"
+        },
+        {
+            "name": "Right",
+            "base_serial": "05DE",
+            "stylus_serial": "1245"
+        }
+    ]
+}
