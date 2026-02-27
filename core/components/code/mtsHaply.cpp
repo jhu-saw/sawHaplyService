@@ -217,7 +217,7 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
 {
 
     m_operating_state.IsBusy() = false;
-    m_operating_state.Valid() = true;
+    m_operating_state.SetValid(true);
 
     m_new_servo_cp = false;
     mControlMode = mtsHaply::UNDEFINED;
@@ -340,7 +340,7 @@ void mtsHaplyDevice::Run(void)
         commands["set_cursor_force"]["values"] = values;
         commands["set_gravity_compensation"] = m_use_gravity_compensation;
         m_setpoint_cp.Position().Assign(m_measured_cp.Position());
-        m_setpoint_cp.Valid() = m_measured_cp.Valid();
+        m_setpoint_cp.SetValid(m_measured_cp.Valid());
     }
     break;
     case mtsHaply::SERVO_CP:
@@ -352,7 +352,7 @@ void mtsHaplyDevice::Run(void)
         commands["set_cursor_position"]["values"] = values;
         commands["set_gravity_compensation"] = m_use_gravity_compensation;
         m_setpoint_cp.Position().Assign(m_servo_cp.Goal());
-        m_setpoint_cp.Valid() = true;
+        m_setpoint_cp.SetValid(true);
     }
     break;
     default:
@@ -460,6 +460,8 @@ void mtsHaplyDevice::GetRobotData(void)
                                 m_interface->SendWarning(m_name + ": device is not calibrated. Please place the end-effector in the home position.");
                                 m_calibration_warning_sent = true;
                             }
+                            m_measured_cp.SetValid(false);
+                            m_measured_cv.SetValid(false);
                         } else {
                             m_calibration_warning_sent = false;
                         }
@@ -468,12 +470,16 @@ void mtsHaplyDevice::GetRobotData(void)
                             m_measured_cp.Position().Translation().X() = state["cursor_position"]["x"].asDouble();
                             m_measured_cp.Position().Translation().Y() = state["cursor_position"]["y"].asDouble();
                             m_measured_cp.Position().Translation().Z() = state["cursor_position"]["z"].asDouble();
-                            m_measured_cp.Valid() = true;
+                            if (m_is_calibrated) {
+                                m_measured_cp.SetValid(true);
+                            }
 
                             m_measured_cv.VelocityLinear().X() = state["cursor_velocity"]["x"].asDouble();
                             m_measured_cv.VelocityLinear().Y() = state["cursor_velocity"]["y"].asDouble();
                             m_measured_cv.VelocityLinear().Z() = state["cursor_velocity"]["z"].asDouble();
-                            m_measured_cv.SetValid(true);
+                            if (m_is_calibrated) {
+                                m_measured_cv.SetValid(true);
+                            }
                             // Log that we have the first set of data
                             if (!m_first_data_sent) {
                                 std::stringstream ss;
@@ -483,7 +489,7 @@ void mtsHaplyDevice::GetRobotData(void)
                             }
                         } else {
                             m_interface->SendWarning(m_name + ": state contains no cursor_position");
-                            m_measured_cp.Valid() = false;
+                            m_measured_cp.SetValid(false);
                             m_measured_cv.SetValid(false);
                         }
                         break;
@@ -617,7 +623,7 @@ void mtsHaplyDevice::state_command(const std::string & command)
             m_interface->SendStatus(this->m_name
                                     + ": current state is \""
                                     + prmOperatingState::StateTypeToString(m_operating_state.State()) + "\"");
-            m_operating_state.Valid() = true;
+            m_operating_state.SetValid(true);
             m_operating_state_event(m_operating_state);
         } else {
             m_interface->SendWarning(this->m_name + ": " + humanReadableMessage);
@@ -648,12 +654,18 @@ void mtsHaplyDevice::SetControlMode(const mtsHaply::ControlModeType & mode)
 
 void mtsHaplyDevice::body_servo_cf(const prmForceCartesianSet & wrench)
 {
+    if (!m_is_calibrated) {
+        return;
+    }
     SetControlMode(mtsHaply::SERVO_CF);
     m_body_servo_cf = wrench;
 }
 
 void mtsHaplyDevice::servo_cp(const prmPositionCartesianSet & position)
 {
+    if (!m_is_calibrated) {
+        return;
+    }
     SetControlMode(mtsHaply::SERVO_CP);
     m_servo_cp = position;
     m_new_servo_cp = true;
@@ -661,8 +673,13 @@ void mtsHaplyDevice::servo_cp(const prmPositionCartesianSet & position)
 
 void mtsHaplyDevice::hold(void)
 {
+    if (!m_is_calibrated) {
+        return;
+    }
+    GetRobotData();
     SetControlMode(mtsHaply::SERVO_CP);
     m_servo_cp.Goal().Assign(m_measured_cp.Position());
+    m_new_servo_cp = true;
 }
 
 void mtsHaplyDevice::use_gravity_compensation(const bool & gravity)
