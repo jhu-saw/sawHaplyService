@@ -1,0 +1,60 @@
+name: clang-format
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check C/C++ formatting
+        run: |
+          files=$(find . -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.hh' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' \))
+          if [ -z "$files" ]; then
+            echo "No C/C++ files found"
+            exit 0
+          fi
+          echo "$files" | xargs clang-format --dry-run --Werror
+
+  tidy-braces-check:
+    runs-on: ubuntu-latest
+    if: ${{ hashFiles('**/compile_commands.json') != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+
+      - name: Find compile_commands.json
+        id: compdb
+        run: |
+          compdb=$(find . -name compile_commands.json | head -n 1)
+          if [ -z "$compdb" ]; then
+            echo "No compile_commands.json found"
+            exit 1
+          fi
+          echo "compdb_dir=$(dirname "$compdb")" >> "$GITHUB_OUTPUT"
+
+      - name: Enforce braces with clang-tidy
+        run: |
+          files=$(find . -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.hh' \))
+          if [ -z "$files" ]; then
+            echo "No C/C++ files found"
+            exit 0
+          fi
+          echo "$files" | xargs -n 1 clang-tidy -p "${{ steps.compdb.outputs.compdb_dir }}" \
+            -checks='-*,readability-braces-around-statements' \
+            -warnings-as-errors='readability-braces-around-statements'

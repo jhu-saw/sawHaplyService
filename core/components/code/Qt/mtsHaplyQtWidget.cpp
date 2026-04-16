@@ -44,8 +44,7 @@ CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsHaplyQtWidget, mtsComponent, std::strin
 
 mtsHaplyQtWidget::mtsHaplyQtWidget(const std::string & componentName, double periodInSeconds):
     mtsComponent(componentName),
-    TimerPeriodInMilliseconds(periodInSeconds)
-{
+    TimerPeriodInMilliseconds(periodInSeconds) {
     QMMessage = new mtsMessageQtWidget();
     QPOState = new prmOperatingStateQtWidget();
 
@@ -66,13 +65,11 @@ mtsHaplyQtWidget::mtsHaplyQtWidget(const std::string & componentName, double per
     startTimer(TimerPeriodInMilliseconds); // ms
 }
 
-void mtsHaplyQtWidget::Configure(const std::string &filename)
-{
+void mtsHaplyQtWidget::Configure(const std::string & filename) {
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: " << filename << std::endl;
 }
 
-void mtsHaplyQtWidget::Startup(void)
-{
+void mtsHaplyQtWidget::Startup(void) {
     CMN_LOG_CLASS_INIT_VERBOSE << "mtsHaplyQtWidget::Startup" << std::endl;
     if (!parent()) {
         show();
@@ -84,45 +81,39 @@ void mtsHaplyQtWidget::Startup(void)
         if (Device.get_button_names(buttons)) {
             mtsManagerLocal * componentManager = mtsManagerLocal::GetInstance();
             // name of device we're connected to
-            std::string device_name =  m_device_interface->GetConnectedInterface()->GetComponent()->GetName();
+            std::string device_name = m_device_interface->GetConnectedInterface()->GetComponent()->GetName();
             const BList::const_iterator end = buttons.end();
-            for (BList::const_iterator iter = buttons.begin();
-                 iter != end;
-                 ++iter) {
+            for (BList::const_iterator iter = buttons.begin(); iter != end; ++iter) {
                 QPBWidgetComponent->AddEventButton(*iter);
             }
             // connect all the interfaces
-            for (BList::const_iterator iter = buttons.begin();
-                 iter != end;
-                 ++iter) {
-                componentManager->Connect(QPBWidgetComponent->GetName(), *iter,
-                                          device_name, *iter);
+            for (BList::const_iterator iter = buttons.begin(); iter != end; ++iter) {
+                componentManager->Connect(QPBWidgetComponent->GetName(), *iter, device_name, *iter);
             }
         }
     }
 }
 
-void mtsHaplyQtWidget::Cleanup(void)
-{
+void mtsHaplyQtWidget::Cleanup(void) {
     this->hide();
     CMN_LOG_CLASS_INIT_VERBOSE << "mtsHaplyQtWidget::Cleanup" << std::endl;
 }
 
-void mtsHaplyQtWidget::closeEvent(QCloseEvent * event)
-{
-    int answer = QMessageBox::warning(this, tr("mtsHaplyQtWidget"),
+void mtsHaplyQtWidget::closeEvent(QCloseEvent * event) {
+    int answer = QMessageBox::warning(this,
+                                      tr("mtsHaplyQtWidget"),
                                       tr("Do you really want to quit this application?"),
                                       QMessageBox::No | QMessageBox::Yes);
     if (answer == QMessageBox::Yes) {
         event->accept();
         QCoreApplication::exit();
-    } else {
+    }
+    else {
         event->ignore();
     }
 }
 
-void mtsHaplyQtWidget::setupUi(void)
-{
+void mtsHaplyQtWidget::setupUi(void) {
     QHBoxLayout * mainLayout = new QHBoxLayout;
 
     // side by side for 3D position, gripper...
@@ -146,13 +137,11 @@ void mtsHaplyQtWidget::setupUi(void)
 
     QPushButton * holdButton = new QPushButton("Hold");
     controlLayout->addWidget(holdButton);
-    connect(holdButton, SIGNAL(clicked()),
-            this, SLOT(SlotHold()));
+    connect(holdButton, SIGNAL(clicked()), this, SLOT(SlotHold()));
 
     QPushButton * freeButton = new QPushButton("Free");
     controlLayout->addWidget(freeButton);
-    connect(freeButton, SIGNAL(clicked()),
-            this, SLOT(SlotFree()));
+    connect(freeButton, SIGNAL(clicked()), this, SLOT(SlotFree()));
 
     controlLayout->addStretch();
 
@@ -179,8 +168,7 @@ void mtsHaplyQtWidget::setupUi(void)
     resize(sizeHint());
 }
 
-void mtsHaplyQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
-{
+void mtsHaplyQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event)) {
     // make sure we should update the display
     if (this->isHidden()) {
         return;
@@ -194,20 +182,13 @@ void mtsHaplyQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(event))
 
     executionResult = Device.body_measured_cf(m_body_measured_cf);
     if (executionResult) {
-        QFTWidget->SetValue(m_body_measured_cf.F(), m_body_measured_cf.T(),
-                            m_body_measured_cf.Timestamp());
+        QFTWidget->SetValue(m_body_measured_cf.F(), m_body_measured_cf.T(), m_body_measured_cf.Timestamp());
     }
 
     Device.period_statistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
 }
 
-void mtsHaplyQtWidget::SlotHold(void)
-{
-    Device.hold();
-}
+void mtsHaplyQtWidget::SlotHold(void) { Device.hold(); }
 
-void mtsHaplyQtWidget::SlotFree(void)
-{
-    Device.free();
-}
+void mtsHaplyQtWidget::SlotFree(void) { Device.free(); }

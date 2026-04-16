@@ -27,8 +27,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <QMainWindow>
 
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
     // log configuration
     cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
@@ -40,9 +39,11 @@ int main(int argc, char * argv[])
     mtsCommandLineOptionsQt options;
     std::string jsonConfigFile = "";
 
-    options.AddOptionOneValue("j", "json-config",
+    options.AddOptionOneValue("j",
+                              "json-config",
                               "json configuration file",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &jsonConfigFile);
+                              cmnCommandLineOptions::OPTIONAL_OPTION,
+                              &jsonConfigFile);
 
     // check that all required options have been provided
     if (!options.Parse(argc, argv, std::cerr)) {
@@ -71,14 +72,11 @@ int main(int argc, char * argv[])
     haply->GetDeviceNames(devices);
     const NamesType::const_iterator endDevices = devices.end();
     NamesType::const_iterator device;
-    for (device = devices.begin();
-         device != endDevices;
-         ++device) {
+    for (device = devices.begin(); device != endDevices; ++device) {
         deviceWidget = new mtsHaplyQtWidget(*device + "-gui");
         deviceWidget->Configure();
         componentManager->AddComponent(deviceWidget);
-        componentManager->Connect(deviceWidget->GetName(), "Device",
-                                  haply->GetName(), *device);
+        componentManager->Connect(deviceWidget->GetName(), "Device", haply->GetName(), *device);
         tabWidget->addTab(deviceWidget, (*device).c_str());
     }
 

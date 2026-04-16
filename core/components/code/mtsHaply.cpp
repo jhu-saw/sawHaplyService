@@ -41,8 +41,9 @@ http://www.cisst.org/cisst/license.txt.
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsHaply, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
 
-class mtsHaplySocket {
-public:
+class mtsHaplySocket
+{
+ public:
     typedef websocketpp::client<websocketpp::config::asio_client> ws_client_t;
     ws_client_t m_ws_client;
     websocketpp::connection_hdl m_ws_hdl;
@@ -73,15 +74,15 @@ public:
             Json::Reader reader;
             if (reader.parse(msg->get_payload(), incoming)) {
                 // Merge top-level arrays which contain multiple devices
-                for (auto const& key : incoming.getMemberNames()) {
+                for (auto const & key : incoming.getMemberNames()) {
                     if (incoming[key].isArray()) {
                         for (unsigned int i = 0; i < incoming[key].size(); ++i) {
                             const Json::Value & item = incoming[key][i];
                             bool found = false;
                             if (m_ws_data.isMember(key) && m_ws_data[key].isArray()) {
                                 for (unsigned int j = 0; j < m_ws_data[key].size(); ++j) {
-                                    if (m_ws_data[key][j].isMember("device_id") && item.isMember("device_id") &&
-                                        m_ws_data[key][j]["device_id"] == item["device_id"]) {
+                                    if (m_ws_data[key][j].isMember("device_id") && item.isMember("device_id")
+                                        && m_ws_data[key][j]["device_id"] == item["device_id"]) {
                                         m_ws_data[key][j] = item;
                                         found = true;
                                         break;
@@ -92,7 +93,8 @@ public:
                                 m_ws_data[key].append(item);
                             }
                         }
-                    } else {
+                    }
+                    else {
                         // For non-array members, just update (e.g. session info)
                         m_ws_data[key] = incoming[key];
                     }
@@ -129,7 +131,7 @@ public:
 
 class mtsHaplyDevice
 {
-public:
+ public:
     typedef std::list<mtsInterfaceProvided *> ButtonInterfaces;
 
     mtsHaplyDevice(const std::string & inverse3Id,
@@ -145,13 +147,11 @@ public:
     void Startup(void);
     void Run(void);
     void Cleanup(void);
-    inline const std::string & Name(void) const {
-        return m_name;
-    }
+    inline const std::string & Name(void) const { return m_name; }
 
     void GetButtonNames(std::list<std::string> & result) const;
 
-protected:
+ protected:
     void GetRobotData(void);
     void SetControlMode(const mtsHaply::ControlModeType & mode);
 
@@ -224,8 +224,7 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
     m_emulate_gripper(emulateGripper),
     m_gripper_rate(gripperRate),
     m_state_table(stateTable),
-    m_interface(interfaceProvided)
-{
+    m_interface(interfaceProvided) {
 
     m_operating_state.IsBusy() = false;
     m_operating_state.SetValid(true);
@@ -258,58 +257,40 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
         // system messages
         m_interface->AddMessageEvents();
         // state
-        m_interface->AddCommandReadState(*m_state_table, m_measured_cp,
-                                         "measured_cp");
-        m_interface->AddCommandReadState(*m_state_table, m_measured_cv,
-                                         "measured_cv");
-        m_interface->AddCommandReadState(*m_state_table, m_body_measured_cf,
-                                         "body/measured_cf");
-        m_interface->AddCommandReadState(*m_state_table, m_gripper_measured_js,
-                         "gripper/measured_js");
-        m_interface->AddCommandReadState(*m_state_table, m_setpoint_cp,
-                                         "setpoint_cp");
+        m_interface->AddCommandReadState(*m_state_table, m_measured_cp, "measured_cp");
+        m_interface->AddCommandReadState(*m_state_table, m_measured_cv, "measured_cv");
+        m_interface->AddCommandReadState(*m_state_table, m_body_measured_cf, "body/measured_cf");
+        m_interface->AddCommandReadState(*m_state_table, m_gripper_measured_js, "gripper/measured_js");
+        m_interface->AddCommandReadState(*m_state_table, m_setpoint_cp, "setpoint_cp");
         // commands
-        m_interface->AddCommandWrite(&mtsHaplyDevice::servo_cp,
-                                     this, "servo_cp");
-        m_interface->AddCommandWrite(&mtsHaplyDevice::body_servo_cf,
-                                     this, "body/servo_cf");
-        m_interface->AddCommandWrite(&mtsHaplyDevice::use_gravity_compensation,
-                                     this, "use_gravity_compensation");
-        m_interface->AddCommandVoid(&mtsHaplyDevice::hold,
-                                    this, "hold");
-        m_interface->AddCommandVoid(&mtsHaplyDevice::free,
-                                    this, "free");
+        m_interface->AddCommandWrite(&mtsHaplyDevice::servo_cp, this, "servo_cp");
+        m_interface->AddCommandWrite(&mtsHaplyDevice::body_servo_cf, this, "body/servo_cf");
+        m_interface->AddCommandWrite(&mtsHaplyDevice::use_gravity_compensation, this, "use_gravity_compensation");
+        m_interface->AddCommandVoid(&mtsHaplyDevice::hold, this, "hold");
+        m_interface->AddCommandVoid(&mtsHaplyDevice::free, this, "free");
         // configuration
-        m_interface->AddCommandRead(&mtsHaplyDevice::GetButtonNames,
-                                    this, "get_button_names");
+        m_interface->AddCommandRead(&mtsHaplyDevice::GetButtonNames, this, "get_button_names");
         // robot State
-        m_interface->AddCommandWrite(&mtsHaplyDevice::state_command,
-                                     this, "state_command", std::string(""));
-        m_interface->AddCommandReadState(*m_state_table, m_operating_state,
-                                         "operating_state");
-        m_interface->AddEventWrite(m_operating_state_event, "operating_state",
-                                   prmOperatingState());
+        m_interface->AddCommandWrite(&mtsHaplyDevice::state_command, this, "state_command", std::string(""));
+        m_interface->AddCommandReadState(*m_state_table, m_operating_state, "operating_state");
+        m_interface->AddEventWrite(m_operating_state_event, "operating_state", prmOperatingState());
         // stats
-        m_interface->AddCommandReadState(*m_state_table, m_state_table->PeriodStats,
-                                         "period_statistics");
+        m_interface->AddCommandReadState(*m_state_table, m_state_table->PeriodStats, "period_statistics");
     }
 
     // buttons
     const ButtonInterfaces::const_iterator endButtons = buttonInterfaces.end();
     ButtonInterfaces::const_iterator buttonInterface;
-    for (buttonInterface = buttonInterfaces.begin();
-         buttonInterface != endButtons;
-         ++buttonInterface) {
+    for (buttonInterface = buttonInterfaces.begin(); buttonInterface != endButtons; ++buttonInterface) {
         ButtonData * data = new ButtonData;
-        mButtonCallbacks.push_back(data);
+        u mButtonCallbacks.push_back(data);
         data->Name = (*buttonInterface)->GetName();
         data->Pressed = false;
         (*buttonInterface)->AddEventWrite(data->Function, "Button", prmEventButton());
     }
 }
 
-mtsHaplyDevice::~mtsHaplyDevice(void)
-{
+mtsHaplyDevice::~mtsHaplyDevice(void) {
     for (auto data : mButtonCallbacks) {
         delete data;
     }
@@ -317,8 +298,7 @@ mtsHaplyDevice::~mtsHaplyDevice(void)
     delete m_state_table;
 }
 
-void mtsHaplyDevice::Startup(void)
-{
+void mtsHaplyDevice::Startup(void) {
     std::stringstream ss;
     ss << m_name << ": properly initialized with ID 0x" << m_inverse3_id;
     if (!m_verse_grip_id.empty()) {
@@ -336,8 +316,7 @@ void mtsHaplyDevice::Startup(void)
     m_state_table->Advance();
 }
 
-void mtsHaplyDevice::Run(void)
-{
+void mtsHaplyDevice::Run(void) {
     m_state_table->Start();
     // process mts commands
     m_interface->ProcessMailBoxes();
@@ -350,8 +329,7 @@ void mtsHaplyDevice::Run(void)
     Json::Value commands = Json::Value(Json::objectValue);
 
     switch (mControlMode) {
-    case mtsHaply::SERVO_CF:
-    {
+    case mtsHaply::SERVO_CF: {
         Json::Value values;
         values["x"] = m_body_servo_cf.Force().X();
         values["y"] = m_body_servo_cf.Force().Y();
@@ -360,10 +338,8 @@ void mtsHaplyDevice::Run(void)
         commands["set_gravity_compensation"] = m_use_gravity_compensation;
         m_setpoint_cp.Position().Assign(m_measured_cp.Position());
         m_setpoint_cp.SetValid(m_measured_cp.Valid());
-    }
-    break;
-    case mtsHaply::SERVO_CP:
-    {
+    } break;
+    case mtsHaply::SERVO_CP: {
         Json::Value values;
         values["x"] = m_servo_cp.Goal().Translation().X();
         values["y"] = m_servo_cp.Goal().Translation().Y();
@@ -372,8 +348,7 @@ void mtsHaplyDevice::Run(void)
         commands["set_gravity_compensation"] = m_use_gravity_compensation;
         m_setpoint_cp.Position().Assign(m_servo_cp.Goal());
         m_setpoint_cp.SetValid(true);
-    }
-    break;
+    } break;
     default:
         commands["probe_position"] = Json::Value(Json::objectValue);
         break;
@@ -387,7 +362,7 @@ void mtsHaplyDevice::Run(void)
         Json::Value grip_commands = Json::Value(Json::objectValue);
         grip_commands["probe_orientation"] = Json::Value(Json::objectValue);
         grip_command["commands"] = grip_commands;
-        // try wired first, then others? 
+        // try wired first, then others?
         // actually we should know the type from discovery or just send to all
         m_websocket->m_ws_command["verse_grip"].append(grip_command);
         m_websocket->m_ws_command["custom_verse_grip"].append(grip_command);
@@ -397,8 +372,7 @@ void mtsHaplyDevice::Run(void)
     m_state_table->Advance();
 }
 
-void mtsHaplyDevice::Cleanup(void)
-{
+void mtsHaplyDevice::Cleanup(void) {
     // Send a command to set force to zero and disable gravity compensation
     Json::Value inverse3_command;
     inverse3_command["device_id"] = m_inverse3_id;
@@ -413,20 +387,16 @@ void mtsHaplyDevice::Cleanup(void)
     m_websocket->m_ws_command["inverse3"].append(inverse3_command);
 }
 
-void mtsHaplyDevice::GetButtonNames(std::list<std::string> & result) const
-{
+void mtsHaplyDevice::GetButtonNames(std::list<std::string> & result) const {
     result.clear();
     const ButtonsData::const_iterator end = mButtonCallbacks.end();
     ButtonsData::const_iterator button;
-    for (button = mButtonCallbacks.begin();
-         button != end;
-         ++button) {
+    for (button = mButtonCallbacks.begin(); button != end; ++button) {
         result.push_back((*button)->Name);
     }
 }
 
-void mtsHaplyDevice::GetRobotData(void)
-{
+void mtsHaplyDevice::GetRobotData(void) {
     if (m_websocket && m_websocket->m_ws_connected) {
         // Inverse3 data
         if (m_websocket->m_ws_data.isMember("inverse3")) {
@@ -438,7 +408,8 @@ void mtsHaplyDevice::GetRobotData(void)
                         foundInverse3 = true;
                         if (!m_info_sent) {
                             const Json::Value deviceNode = devices[i];
-                            const Json::Value config = deviceNode.isMember("config") ? deviceNode["config"] : deviceNode;
+                            const Json::Value config
+                                = deviceNode.isMember("config") ? deviceNode["config"] : deviceNode;
                             const Json::Value info = config.isMember("device_info") ? config["device_info"] : config;
                             std::stringstream ss;
                             ss << m_name << ": found 0x" << m_inverse3_id;
@@ -446,7 +417,8 @@ void mtsHaplyDevice::GetRobotData(void)
                                 ss << ", type=" << info["device_type"].asInt();
                             }
                             if (info.isMember("major_version") && info.isMember("minor_version")) {
-                                ss << ", version=" << info["major_version"].asInt() << "." << info["minor_version"].asInt();
+                                ss << ", version=" << info["major_version"].asInt() << "."
+                                   << info["minor_version"].asInt();
                             }
                             m_interface->SendStatus(ss.str());
                             m_info_sent = true;
@@ -463,7 +435,8 @@ void mtsHaplyDevice::GetRobotData(void)
                                     m_interface->SendStatus(m_name + ": device is calibrated.");
                                 }
                             }
-                        } else if (state.isMember("calibration_state")) {
+                        }
+                        else if (state.isMember("calibration_state")) {
                             bool was_calibrated = m_is_calibrated;
                             m_is_calibrated = (state["calibration_state"].asInt() >= 2); // 2 is typically "calibrated"
                             if (m_is_calibrated != was_calibrated) {
@@ -476,12 +449,14 @@ void mtsHaplyDevice::GetRobotData(void)
                         }
                         if (!m_is_calibrated) {
                             if (!m_calibration_warning_sent) {
-                                m_interface->SendWarning(m_name + ": device is not calibrated. Please place the end-effector in the home position.");
+                                m_interface->SendWarning(m_name + ": device is not calibrated. Please place "
+                                                                  "the end-effector in the home position.");
                                 m_calibration_warning_sent = true;
                             }
                             m_measured_cp.SetValid(false);
                             m_measured_cv.SetValid(false);
-                        } else {
+                        }
+                        else {
                             m_calibration_warning_sent = false;
                         }
 
@@ -502,11 +477,13 @@ void mtsHaplyDevice::GetRobotData(void)
                             // Log that we have the first set of data
                             if (!m_first_data_sent) {
                                 std::stringstream ss;
-                                ss << m_name << ": first data point received (" << devices.size() << " devices in cache)";
+                                ss << m_name << ": first data point received (" << devices.size()
+                                   << " devices in cache)";
                                 m_interface->SendStatus(ss.str());
                                 m_first_data_sent = true;
                             }
-                        } else {
+                        }
+                        else {
                             m_interface->SendWarning(m_name + ": state contains no cursor_position");
                             m_measured_cp.SetValid(false);
                             m_measured_cv.SetValid(false);
@@ -519,16 +496,18 @@ void mtsHaplyDevice::GetRobotData(void)
                     ss << m_name << ": device 0x" << m_inverse3_id << " not found in [";
                     for (unsigned int i = 0; i < devices.size(); ++i) {
                         ss << "\"0x" << devices[i]["device_id"].asString() << "\"";
-                        if (i < devices.size() - 1) ss << ", ";
+                        if (i < devices.size() - 1)
+                            ss << ", ";
                     }
                     ss << "]";
                     m_interface->SendStatus(ss.str());
                     // m_info_sent = true;
                 }
             }
-        } else {
-             // No inverse3 key in m_ws_data
-             // m_interface->SendWarning(m_name + ": m_ws_data has no inverse3");
+        }
+        else {
+            // No inverse3 key in m_ws_data
+            // m_interface->SendWarning(m_name + ": m_ws_data has no inverse3");
         }
 
         // VerseGrip data for orientation
@@ -544,13 +523,15 @@ void mtsHaplyDevice::GetRobotData(void)
                                 foundGrip = true;
                                 const Json::Value state = grips[i]["state"];
                                 const Json::Value status = grips[i]["status"];
-                                
+
                                 if (status.isMember("awake") && !status["awake"].asBool()) {
                                     if (!m_awake_warning_sent) {
-                                        m_interface->SendWarning(m_name + ": verse grip is not awake. Please press the main button to wake it up.");
+                                        m_interface->SendWarning(m_name + ": verse grip is not awake. Please press the "
+                                                                          "main button to wake it up.");
                                         m_awake_warning_sent = true;
                                     }
-                                } else {
+                                }
+                                else {
                                     if (m_awake_warning_sent) {
                                         m_interface->SendStatus(m_name + ": verse grip is awake.");
                                         m_awake_warning_sent = false;
@@ -571,10 +552,14 @@ void mtsHaplyDevice::GetRobotData(void)
                                     if (buttons.isObject()) {
                                         std::vector<bool> pressed(mButtonCallbacks.size(), false);
                                         // Map JSON keys to button indices: Home=0, A=1, B=2, C=3
-                                        if (buttons.isMember("home") && (pressed.size() > 0)) pressed[0] = buttons["home"].asBool();
-                                        if (buttons.isMember("a") && (pressed.size() > 1)) pressed[1] = buttons["a"].asBool();
-                                        if (buttons.isMember("b") && (pressed.size() > 2)) pressed[2] = buttons["b"].asBool();
-                                        if (buttons.isMember("c") && (pressed.size() > 3)) pressed[3] = buttons["c"].asBool();
+                                        if (buttons.isMember("home") && (pressed.size() > 0))
+                                            pressed[0] = buttons["home"].asBool();
+                                        if (buttons.isMember("a") && (pressed.size() > 1))
+                                            pressed[1] = buttons["a"].asBool();
+                                        if (buttons.isMember("b") && (pressed.size() > 2))
+                                            pressed[2] = buttons["b"].asBool();
+                                        if (buttons.isMember("c") && (pressed.size() > 3))
+                                            pressed[3] = buttons["c"].asBool();
 
                                         if (m_emulate_gripper && (pressed.size() > 2)) {
                                             const bool close_pressed = pressed[1]; // A
@@ -598,7 +583,8 @@ void mtsHaplyDevice::GetRobotData(void)
                                             if (data->Pressed != pressed[bIdx]) {
                                                 data->Pressed = pressed[bIdx];
                                                 prmEventButton event;
-                                                event.Type() = data->Pressed ? prmEventButton::PRESSED : prmEventButton::RELEASED;
+                                                event.Type() = data->Pressed ? prmEventButton::PRESSED
+                                                                             : prmEventButton::RELEASED;
                                                 data->Function(event);
                                             }
                                             bIdx++;
@@ -611,17 +597,21 @@ void mtsHaplyDevice::GetRobotData(void)
                                     int current_decile = (int)(battery * 10.0);
                                     if (!m_first_battery_sent) {
                                         std::stringstream ss;
-                                        ss << m_name << ": verse grip battery level is " << (int)(battery * 100.0) << "%";
+                                        ss << m_name << ": verse grip battery level is " << (int)(battery * 100.0)
+                                           << "%";
                                         m_interface->SendStatus(ss.str());
                                         m_first_battery_sent = true;
                                         m_last_battery_decile = current_decile;
-                                    } else {
+                                    }
+                                    else {
                                         if (current_decile < m_last_battery_decile) {
                                             std::stringstream ss;
-                                            ss << m_name << ": verse grip battery dropped below " << (current_decile + 1) * 10 << "% (" << (int)(battery * 100.0) << "%).";
+                                            ss << m_name << ": verse grip battery dropped below "
+                                               << (current_decile + 1) * 10 << "% (" << (int)(battery * 100.0) << "%).";
                                             m_interface->SendWarning(ss.str());
                                             m_last_battery_decile = current_decile;
-                                        } else if (current_decile > m_last_battery_decile) {
+                                        }
+                                        else if (current_decile > m_last_battery_decile) {
                                             m_last_battery_decile = current_decile;
                                         }
                                     }
@@ -631,46 +621,50 @@ void mtsHaplyDevice::GetRobotData(void)
                         }
                     }
                 }
-                if (foundGrip) break;
+                if (foundGrip)
+                    break;
             }
-        } else {
+        }
+        else {
             // Identity orientation if no grip
             m_measured_cp.Position().Rotation().Assign(vctMatRot3::Identity());
         }
     }
 }
 
-void mtsHaplyDevice::state_command(const std::string & command)
-{
+void mtsHaplyDevice::state_command(const std::string & command) {
     std::string humanReadableMessage;
     prmOperatingState::StateType newOperatingState;
     try {
         if (m_operating_state.ValidCommand(prmOperatingState::CommandTypeFromString(command),
-                                           newOperatingState, humanReadableMessage)) {
+                                           newOperatingState,
+                                           humanReadableMessage)) {
             if (command == "enable") {
                 m_operating_state.State() = prmOperatingState::ENABLED;
-            } else if (command == "disable") {
+            }
+            else if (command == "disable") {
                 m_operating_state.State() = prmOperatingState::DISABLED;
-            } else {
-                m_interface->SendStatus(this->m_name + ": state command \""
-                                        + command + "\" is not supported yet");
+            }
+            else {
+                m_interface->SendStatus(this->m_name + ": state command \"" + command + "\" is not supported yet");
             }
             // always emit event with current device state
-            m_interface->SendStatus(this->m_name
-                                    + ": current state is \""
+            m_interface->SendStatus(this->m_name + ": current state is \""
                                     + prmOperatingState::StateTypeToString(m_operating_state.State()) + "\"");
             m_operating_state.SetValid(true);
             m_operating_state_event(m_operating_state);
-        } else {
+        }
+        else {
             m_interface->SendWarning(this->m_name + ": " + humanReadableMessage);
         }
-    } catch (std::runtime_error & e) {
-        m_interface->SendWarning(this->m_name + ": " + command + " doesn't seem to be a valid state_command (" + e.what() + ")");
+    }
+    catch (std::runtime_error & e) {
+        m_interface->SendWarning(this->m_name + ": " + command + " doesn't seem to be a valid state_command ("
+                                 + e.what() + ")");
     }
 }
 
-void mtsHaplyDevice::SetControlMode(const mtsHaply::ControlModeType & mode)
-{
+void mtsHaplyDevice::SetControlMode(const mtsHaply::ControlModeType & mode) {
     // return if we are already in this mode
     if (mode == mControlMode) {
         return;
@@ -688,8 +682,7 @@ void mtsHaplyDevice::SetControlMode(const mtsHaply::ControlModeType & mode)
     mControlMode = mode;
 }
 
-void mtsHaplyDevice::body_servo_cf(const prmForceCartesianSet & wrench)
-{
+void mtsHaplyDevice::body_servo_cf(const prmForceCartesianSet & wrench) {
     if (!m_is_calibrated) {
         return;
     }
@@ -697,8 +690,7 @@ void mtsHaplyDevice::body_servo_cf(const prmForceCartesianSet & wrench)
     m_body_servo_cf = wrench;
 }
 
-void mtsHaplyDevice::servo_cp(const prmPositionCartesianSet & position)
-{
+void mtsHaplyDevice::servo_cp(const prmPositionCartesianSet & position) {
     if (!m_is_calibrated) {
         return;
     }
@@ -707,8 +699,7 @@ void mtsHaplyDevice::servo_cp(const prmPositionCartesianSet & position)
     m_new_servo_cp = true;
 }
 
-void mtsHaplyDevice::hold(void)
-{
+void mtsHaplyDevice::hold(void) {
     if (!m_is_calibrated) {
         return;
     }
@@ -718,20 +709,15 @@ void mtsHaplyDevice::hold(void)
     m_new_servo_cp = true;
 }
 
-void mtsHaplyDevice::use_gravity_compensation(const bool & gravity)
-{
-    m_use_gravity_compensation = gravity;
-}
+void mtsHaplyDevice::use_gravity_compensation(const bool & gravity) { m_use_gravity_compensation = gravity; }
 
-void mtsHaplyDevice::free(void)
-{
+void mtsHaplyDevice::free(void) {
     SetControlMode(mtsHaply::SERVO_CF);
     m_body_servo_cf.Force().Zeros();
     use_gravity_compensation(true);
 }
 
-void mtsHaply::Init(void)
-{
+void mtsHaply::Init(void) {
     mConfigured = false;
     m_emulate_gripper = true;
     m_gripper_rate = 0.02;
@@ -739,27 +725,23 @@ void mtsHaply::Init(void)
 }
 
 mtsHaply::mtsHaply(const std::string & componentName):
-    mtsTaskContinuous(componentName, 256)
-{
+    mtsTaskContinuous(componentName, 256) {
     Init();
 }
 
 mtsHaply::mtsHaply(const mtsTaskContinuousConstructorArg & arg):
-    mtsTaskContinuous(arg)
-{
+    mtsTaskContinuous(arg) {
     Init();
 }
 
-mtsHaply::~mtsHaply(void)
-{
+mtsHaply::~mtsHaply(void) {
     for (auto device : mDevices) {
         delete device;
     }
     mDevices.clear();
 }
 
-void mtsHaply::Configure(const std::string & filename)
-{
+void mtsHaply::Configure(const std::string & filename) {
     if (mConfigured) {
         CMN_LOG_CLASS_INIT_VERBOSE << "Configure: already configured" << std::endl;
         return;
@@ -801,9 +783,10 @@ void mtsHaply::Configure(const std::string & filename)
             const double configured_rate = jsonConfig["gripper_rate"].asDouble();
             if (configured_rate > 0.0) {
                 m_gripper_rate = configured_rate;
-            } else {
-                CMN_LOG_CLASS_INIT_WARNING << "Configure: gripper_rate must be > 0, using default "
-                                           << m_gripper_rate << std::endl;
+            }
+            else {
+                CMN_LOG_CLASS_INIT_WARNING << "Configure: gripper_rate must be > 0, using default " << m_gripper_rate
+                                           << std::endl;
             }
         }
 
@@ -826,34 +809,46 @@ void mtsHaply::Configure(const std::string & filename)
                 if (jsonValue["base_serial"].isString()) {
                     try {
                         dr.Inverse3Serial = std::stoull(jsonValue["base_serial"].asString(), nullptr, 16);
-                    } catch (...) {
-                        CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid base_serial string: " << jsonValue["base_serial"].asString() << std::endl;
+                    }
+                    catch (...) {
+                        CMN_LOG_CLASS_INIT_ERROR
+                            << "Configure: invalid base_serial string: " << jsonValue["base_serial"].asString()
+                            << std::endl;
                         exit(-1);
                     }
-                } else {
-                     dr.Inverse3Serial = jsonValue["base_serial"].asUInt();
                 }
-            } else if (jsonValue.isMember("serial")) {
+                else {
+                    dr.Inverse3Serial = jsonValue["base_serial"].asUInt();
+                }
+            }
+            else if (jsonValue.isMember("serial")) {
                 if (jsonValue["serial"].isString()) {
                     try {
                         dr.Inverse3Serial = std::stoull(jsonValue["serial"].asString(), nullptr, 16);
-                    } catch (...) {
-                        CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid serial string: " << jsonValue["serial"].asString() << std::endl;
+                    }
+                    catch (...) {
+                        CMN_LOG_CLASS_INIT_ERROR
+                            << "Configure: invalid serial string: " << jsonValue["serial"].asString() << std::endl;
                         exit(-1);
                     }
-                } else {
-                     dr.Inverse3Serial = jsonValue["serial"].asUInt();
                 }
-            } else if (jsonValue.isMember("inverse3")) {
+                else {
+                    dr.Inverse3Serial = jsonValue["serial"].asUInt();
+                }
+            }
+            else if (jsonValue.isMember("inverse3")) {
                 if (jsonValue["inverse3"].isString()) {
                     try {
                         dr.Inverse3Serial = std::stoull(jsonValue["inverse3"].asString(), nullptr, 16);
-                    } catch (...) {
-                        CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid inverse3 string: " << jsonValue["inverse3"].asString() << std::endl;
+                    }
+                    catch (...) {
+                        CMN_LOG_CLASS_INIT_ERROR
+                            << "Configure: invalid inverse3 string: " << jsonValue["inverse3"].asString() << std::endl;
                         exit(-1);
                     }
-                } else {
-                     dr.Inverse3Serial = jsonValue["inverse3"].asUInt();
+                }
+                else {
+                    dr.Inverse3Serial = jsonValue["inverse3"].asUInt();
                 }
             }
 
@@ -861,28 +856,38 @@ void mtsHaply::Configure(const std::string & filename)
                 if (jsonValue["stylus_serial"].isString()) {
                     try {
                         dr.VerseGripSerial = std::stoull(jsonValue["stylus_serial"].asString(), nullptr, 16);
-                    } catch (...) {
-                        CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid stylus_serial string: " << jsonValue["stylus_serial"].asString() << std::endl;
+                    }
+                    catch (...) {
+                        CMN_LOG_CLASS_INIT_ERROR
+                            << "Configure: invalid stylus_serial string: " << jsonValue["stylus_serial"].asString()
+                            << std::endl;
                         exit(-1);
                     }
-                } else {
-                     dr.VerseGripSerial = jsonValue["stylus_serial"].asUInt();
                 }
-            } else if (jsonValue.isMember("verse_grip")) {
+                else {
+                    dr.VerseGripSerial = jsonValue["stylus_serial"].asUInt();
+                }
+            }
+            else if (jsonValue.isMember("verse_grip")) {
                 if (jsonValue["verse_grip"].isString()) {
                     try {
                         dr.VerseGripSerial = std::stoull(jsonValue["verse_grip"].asString(), nullptr, 16);
-                    } catch (...) {
-                        CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid verse_grip string: " << jsonValue["verse_grip"].asString() << std::endl;
+                    }
+                    catch (...) {
+                        CMN_LOG_CLASS_INIT_ERROR
+                            << "Configure: invalid verse_grip string: " << jsonValue["verse_grip"].asString()
+                            << std::endl;
                         exit(-1);
                     }
-                } else {
-                     dr.VerseGripSerial = jsonValue["verse_grip"].asUInt();
+                }
+                else {
+                    dr.VerseGripSerial = jsonValue["verse_grip"].asUInt();
                 }
             }
             requestedDevices.push_back(dr);
         }
-    } else {
+    }
+    else {
         // Default configuration
         DeviceRequest dr;
         dr.Name = "Test";
@@ -904,7 +909,8 @@ void mtsHaply::Configure(const std::string & filename)
     bool receivedData = false;
     for (int i = 0; i < 200; ++i) { // ~2 seconds timeout
         m_websocket->Poll();
-        if (m_websocket->m_ws_connected && (m_websocket->m_ws_data.isMember("inverse3") || m_websocket->m_ws_data.isMember("verse_grip"))) {
+        if (m_websocket->m_ws_connected
+            && (m_websocket->m_ws_data.isMember("inverse3") || m_websocket->m_ws_data.isMember("verse_grip"))) {
             receivedData = true;
             break;
         }
@@ -912,12 +918,13 @@ void mtsHaply::Configure(const std::string & filename)
     }
 
     if (!receivedData) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to connect to service at " << m_uri << " or no devices discovered." << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to connect to service at " << m_uri
+                                 << " or no devices discovered." << std::endl;
         exit(-1);
     }
 
     const Json::Value discoveredDevices = m_websocket->m_ws_data["inverse3"];
-    
+
     // Validate requested devices against discovered
     for (auto & req : requestedDevices) {
         // Find Inverse3
@@ -932,7 +939,8 @@ void mtsHaply::Configure(const std::string & filename)
                             req.Inverse3ID = discoveredInv3[i]["device_id"].asString();
                             break;
                         }
-                    } catch (...) {
+                    }
+                    catch (...) {
                         // Ignore invalid device IDs
                     }
                 }
@@ -953,15 +961,18 @@ void mtsHaply::Configure(const std::string & filename)
                                     req.VerseGripID = grips[i]["device_id"].asString();
                                     break;
                                 }
-                            } catch (...) {
+                            }
+                            catch (...) {
                                 // Ignore invalid device IDs
                             }
                         }
                     }
                 }
-                if (req.VerseGripFound) break;
+                if (req.VerseGripFound)
+                    break;
             }
-        } else {
+        }
+        else {
             req.VerseGripFound = true; // Not requested, so ok
         }
     }
@@ -993,54 +1004,49 @@ void mtsHaply::Configure(const std::string & filename)
         mtsStateTable * stateTable = new mtsStateTable(StateTable.GetHistoryLength(), req.Name);
         mtsInterfaceProvided * interfaceProvided = this->AddInterfaceProvided(req.Name);
         if (!interfaceProvided) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: can't create interface provided with name \""
-                                     << req.Name << "\"" << std::endl;
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: can't create interface provided with name \"" << req.Name << "\""
+                                     << std::endl;
             exit(-1);
         }
-        mtsHaplyDevice * device = new mtsHaplyDevice(req.Inverse3ID, req.VerseGripID, req.Name,
-                                                     m_emulate_gripper, m_gripper_rate,
-                                                     stateTable, interfaceProvided,
-                                                     buttonInterfaces, m_websocket.get());
+        mtsHaplyDevice * device = new mtsHaplyDevice(req.Inverse3ID,
+                                                     req.VerseGripID,
+                                                     req.Name,
+                                                     m_emulate_gripper,
+                                                     m_gripper_rate,
+                                                     stateTable,
+                                                     interfaceProvided,
+                                                     buttonInterfaces,
+                                                     m_websocket.get());
         mDevices.push_back(device);
     }
     mConfigured = true;
 }
 
 
-void mtsHaply::Startup(void)
-{
+void mtsHaply::Startup(void) {
     // Start WebSocket connection (already configured in Configure)
     const DevicesType::iterator end = mDevices.end();
     DevicesType::iterator device;
-    for (device = mDevices.begin();
-         device != end;
-         ++device) {
+    for (device = mDevices.begin(); device != end; ++device) {
         (*device)->Startup();
     }
 }
 
 
-void mtsHaply::GetDeviceNames(std::list<std::string> & result) const
-{
+void mtsHaply::GetDeviceNames(std::list<std::string> & result) const {
     result.clear();
     const DevicesType::const_iterator end = mDevices.end();
     DevicesType::const_iterator device;
-    for (device = mDevices.begin();
-         device != end;
-         ++device) {
+    for (device = mDevices.begin(); device != end; ++device) {
         result.push_back((*device)->Name());
     }
 }
 
-void mtsHaply::GetButtonNames(const std::string & deviceName,
-                                       std::list<std::string> & result) const
-{
+void mtsHaply::GetButtonNames(const std::string & deviceName, std::list<std::string> & result) const {
     result.clear();
     const DevicesType::const_iterator end = mDevices.end();
     DevicesType::const_iterator device;
-    for (device = mDevices.begin();
-         device != end;
-         ++device) {
+    for (device = mDevices.begin(); device != end; ++device) {
         if ((*device)->Name() == deviceName) {
             (*device)->GetButtonNames(result);
             return;
@@ -1048,8 +1054,7 @@ void mtsHaply::GetButtonNames(const std::string & deviceName,
     }
 }
 
-void mtsHaply::Run(void)
-{
+void mtsHaply::Run(void) {
     // 1. Poll the WebSocket
     // Drain all pending messages to get the latest state for all devices
     size_t n = 0;
@@ -1074,9 +1079,7 @@ void mtsHaply::Run(void)
     m_websocket->m_ws_command["inverse3"] = Json::Value(Json::arrayValue);
     const DevicesType::iterator end = mDevices.end();
     DevicesType::iterator device;
-    for (device = mDevices.begin();
-         device != end;
-         ++device) {
+    for (device = mDevices.begin(); device != end; ++device) {
         (*device)->Run();
     }
 
@@ -1087,16 +1090,13 @@ void mtsHaply::Run(void)
     }
 }
 
-void mtsHaply::Cleanup(void)
-{
+void mtsHaply::Cleanup(void) {
     m_websocket->m_ws_command = Json::Value(Json::objectValue);
     m_websocket->m_ws_command["inverse3"] = Json::Value(Json::arrayValue);
 
     const DevicesType::iterator end = mDevices.end();
     DevicesType::iterator device;
-    for (device = mDevices.begin();
-         device != end;
-         ++device) {
+    for (device = mDevices.begin(); device != end; ++device) {
         (*device)->Cleanup();
     }
 
