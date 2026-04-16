@@ -1,5 +1,7 @@
 {
     "uri": "ws://localhost:10001",
+    "emulate_gripper": true,
+    "gripper_rate": 0.02,
     "devices": [
         {
             "name": "Left",

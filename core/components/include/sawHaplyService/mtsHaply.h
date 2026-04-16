@@ -51,6 +51,8 @@ class CISST_EXPORT mtsHaply: public mtsTaskContinuous
 
     bool mConfigured;
     std::string m_uri = "ws://localhost:10001";
+    bool m_emulate_gripper = true;
+    double m_gripper_rate = 0.02;
 
     struct {
         int Major;

@@ -37,6 +37,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <websocketpp/client.hpp>
 #include <json/json.h>
 
+#include <algorithm>
+
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsHaply, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
 
 class mtsHaplySocket {
@@ -133,6 +135,8 @@ public:
     mtsHaplyDevice(const std::string & inverse3Id,
                    const std::string & verseGripId,
                    const std::string & name,
+                   const bool emulateGripper,
+                   const double gripperRate,
                    mtsStateTable * stateTable,
                    mtsInterfaceProvided * interfaceProvided,
                    const ButtonInterfaces & buttonInterfaces,
@@ -167,6 +171,8 @@ protected:
     std::string m_inverse3_id;
     std::string m_verse_grip_id;
     std::string m_name;
+    bool m_emulate_gripper;
+    double m_gripper_rate;
     mtsStateTable * m_state_table;
     mtsInterfaceProvided * m_interface;
 
@@ -183,6 +189,7 @@ protected:
     prmPositionCartesianGet m_measured_cp, m_setpoint_cp;
     prmVelocityCartesianGet m_measured_cv;
     prmForceCartesianGet m_body_measured_cf;
+    prmStateJoint m_gripper_measured_js;
 
     mtsHaply::ControlModeType mControlMode;
 
@@ -204,6 +211,8 @@ protected:
 mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
                                const std::string & verseGripId,
                                const std::string & name,
+                               const bool emulateGripper,
+                               const double gripperRate,
                                mtsStateTable * stateTable,
                                mtsInterfaceProvided * interfaceProvided,
                                const mtsHaplyDevice::ButtonInterfaces & buttonInterfaces,
@@ -212,6 +221,8 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
     m_inverse3_id(inverse3Id),
     m_verse_grip_id(verseGripId),
     m_name(name),
+    m_emulate_gripper(emulateGripper),
+    m_gripper_rate(gripperRate),
     m_state_table(stateTable),
     m_interface(interfaceProvided)
 {
@@ -229,12 +240,18 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
     m_measured_cp.SetMovingFrame(m_name);
     m_setpoint_cp.SetReferenceFrame(m_name + "_base");
     m_setpoint_cp.SetMovingFrame(m_name);
+    m_gripper_measured_js.Name().resize(1);
+    m_gripper_measured_js.Name()[0] = "gripper";
+    m_gripper_measured_js.Position().SetSize(1);
+    m_gripper_measured_js.Position()[0] = 1.0; // open
+    m_gripper_measured_js.SetValid(true);
 
     m_state_table->SetAutomaticAdvance(false);
     m_state_table->AddData(m_operating_state, "operating_state");
     m_state_table->AddData(m_measured_cp, "measured_cp");
     m_state_table->AddData(m_measured_cv, "measured_cv");
     m_state_table->AddData(m_body_measured_cf, "body/measured_cf");
+    m_state_table->AddData(m_gripper_measured_js, "gripper/measured_js");
     m_state_table->AddData(m_setpoint_cp, "setpoint_cp");
 
     if (m_interface) {
@@ -247,6 +264,8 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
                                          "measured_cv");
         m_interface->AddCommandReadState(*m_state_table, m_body_measured_cf,
                                          "body/measured_cf");
+        m_interface->AddCommandReadState(*m_state_table, m_gripper_measured_js,
+                         "gripper/measured_js");
         m_interface->AddCommandReadState(*m_state_table, m_setpoint_cp,
                                          "setpoint_cp");
         // commands
@@ -552,13 +571,30 @@ void mtsHaplyDevice::GetRobotData(void)
                                     if (buttons.isObject()) {
                                         std::vector<bool> pressed(mButtonCallbacks.size(), false);
                                         // Map JSON keys to button indices: Home=0, A=1, B=2, C=3
-                                        if (buttons.isMember("home")) pressed[0] = buttons["home"].asBool();
-                                        if (buttons.isMember("a")) pressed[1] = buttons["a"].asBool();
-                                        if (buttons.isMember("b")) pressed[2] = buttons["b"].asBool();
-                                        if (buttons.isMember("c")) pressed[3] = buttons["c"].asBool();
+                                        if (buttons.isMember("home") && (pressed.size() > 0)) pressed[0] = buttons["home"].asBool();
+                                        if (buttons.isMember("a") && (pressed.size() > 1)) pressed[1] = buttons["a"].asBool();
+                                        if (buttons.isMember("b") && (pressed.size() > 2)) pressed[2] = buttons["b"].asBool();
+                                        if (buttons.isMember("c") && (pressed.size() > 3)) pressed[3] = buttons["c"].asBool();
+
+                                        if (m_emulate_gripper && (pressed.size() > 2)) {
+                                            const bool close_pressed = pressed[1]; // A
+                                            const bool open_pressed = pressed[2];  // B
+                                            if (close_pressed != open_pressed) {
+                                                double gripper = m_gripper_measured_js.Position()[0];
+                                                gripper += close_pressed ? -m_gripper_rate : m_gripper_rate;
+                                                gripper = std::max(0.0, std::min(1.0, gripper));
+                                                m_gripper_measured_js.Position()[0] = gripper;
+                                                m_gripper_measured_js.SetValid(true);
+                                            }
+                                        }
 
                                         int bIdx = 0;
                                         for (auto & data : mButtonCallbacks) {
+                                            if (m_emulate_gripper && ((bIdx == 1) || (bIdx == 2))) {
+                                                data->Pressed = pressed[bIdx];
+                                                bIdx++;
+                                                continue;
+                                            }
                                             if (data->Pressed != pressed[bIdx]) {
                                                 data->Pressed = pressed[bIdx];
                                                 prmEventButton event;
@@ -697,6 +733,8 @@ void mtsHaplyDevice::free(void)
 void mtsHaply::Init(void)
 {
     mConfigured = false;
+    m_emulate_gripper = true;
+    m_gripper_rate = 0.02;
     m_websocket = std::make_unique<mtsHaplySocket>();
 }
 
@@ -753,6 +791,20 @@ void mtsHaply::Configure(const std::string & filename)
 
         if (!jsonConfig["uri"].empty()) {
             m_uri = jsonConfig["uri"].asString();
+        }
+
+        if (jsonConfig.isMember("emulate_gripper")) {
+            m_emulate_gripper = jsonConfig["emulate_gripper"].asBool();
+        }
+
+        if (jsonConfig.isMember("gripper_rate")) {
+            const double configured_rate = jsonConfig["gripper_rate"].asDouble();
+            if (configured_rate > 0.0) {
+                m_gripper_rate = configured_rate;
+            } else {
+                CMN_LOG_CLASS_INIT_WARNING << "Configure: gripper_rate must be > 0, using default "
+                                           << m_gripper_rate << std::endl;
+            }
         }
 
         const Json::Value jsonDevices = jsonConfig["devices"];
@@ -945,7 +997,9 @@ void mtsHaply::Configure(const std::string & filename)
                                      << req.Name << "\"" << std::endl;
             exit(-1);
         }
-        mtsHaplyDevice * device = new mtsHaplyDevice(req.Inverse3ID, req.VerseGripID, req.Name, stateTable, interfaceProvided,
+        mtsHaplyDevice * device = new mtsHaplyDevice(req.Inverse3ID, req.VerseGripID, req.Name,
+                                                     m_emulate_gripper, m_gripper_rate,
+                                                     stateTable, interfaceProvided,
                                                      buttonInterfaces, m_websocket.get());
         mDevices.push_back(device);
     }
