@@ -12,7 +12,8 @@ SAW wrapper for Haply Inverse3 haptic devices. This repository provides a core c
  * Haply Service: The Haply service must be running and accessible via WebSockets (default: `ws://localhost:10001`).
  * Qt for user interface
  * ROS and ROS CRTK (optional) - works with ROS 1 and ROS 2!
-
+ * libwebsocketpp: `sudo apt install libwebsocketpp-dev`
+ 
 # Compilation and configuration
 
 See https://github.com/jhu-saw/vcs for download and build instructions.
