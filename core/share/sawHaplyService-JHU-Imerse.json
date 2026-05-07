@@ -2,14 +2,14 @@
     "uri": "ws://localhost:10001",
     "devices": [
         {
-            "name": "Left",
+            "name": "MTML",
             "base_serial": "05E4",
-            "stylus_serial": "1237"
+            "stylus_serial": "1245"
         },
         {
-            "name": "Right",
+            "name": "MTMR",
             "base_serial": "05DE",
-            "stylus_serial": "1245"
+            "stylus_serial": "1237"
         }
     ]
 }

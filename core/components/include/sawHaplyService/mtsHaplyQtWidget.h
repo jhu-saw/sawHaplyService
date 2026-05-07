@@ -35,7 +35,7 @@ http://www.cisst.org/cisst/license.txt.
 // Always include last
 #include <sawHaplyService/sawHaplyServiceQtExport.h>
 
-class CISST_EXPORT mtsHaplyQtWidget : public QWidget, public mtsComponent
+class CISST_EXPORT mtsHaplyQtWidget: public QWidget, public mtsComponent
 {
     Q_OBJECT;
     CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);
@@ -62,7 +62,6 @@ class CISST_EXPORT mtsHaplyQtWidget : public QWidget, public mtsComponent
     int TimerPeriodInMilliseconds;
 
  protected:
-
     mtsInterfaceRequired * m_device_interface;
 
     struct {

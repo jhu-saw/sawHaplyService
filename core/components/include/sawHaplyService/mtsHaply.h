@@ -22,7 +22,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsTaskContinuous.h>
 #include <memory>
 
-#include <sawHaplyService/sawHaplyServiceExport.h>  // always include last
+#include <sawHaplyService/sawHaplyServiceExport.h> // always include last
 
 class mtsHaplyDevice;
 class mtsHaplySocket;
@@ -38,13 +38,12 @@ class CISST_EXPORT mtsHaply: public mtsTaskContinuous
 
     void Configure(const std::string & filename = "");
     void GetDeviceNames(std::list<std::string> & result) const;
-    void GetButtonNames(const std::string & deviceName,
-                        std::list<std::string> & result) const;
+    void GetButtonNames(const std::string & deviceName, std::list<std::string> & result) const;
     void Startup(void);
     void Run(void);
     void Cleanup(void);
 
-    enum ControlModeType {UNDEFINED, SERVO_CP, SERVO_CF};
+    enum ControlModeType { UNDEFINED, SERVO_CP, SERVO_CF };
 
  protected:
     void Init(void);
@@ -69,4 +68,4 @@ class CISST_EXPORT mtsHaply: public mtsTaskContinuous
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsHaply);
 
-#endif  // _mtsHaply_h
+#endif // _mtsHaply_h

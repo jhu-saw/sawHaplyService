@@ -29,8 +29,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
     // log configuration
     cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
@@ -49,20 +48,28 @@ int main(int argc, char * argv[])
     double tfPeriod = 20.0 * cmn_ms;
     std::list<std::string> managerConfig;
 
-    options.AddOptionOneValue("j", "json-config",
+    options.AddOptionOneValue("j",
+                              "json-config",
                               "json configuration file",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &jsonConfigFile);
-    options.AddOptionOneValue("p", "ros-period",
-                              "period in seconds to read all tool positions (default 0.002, 2 ms, 500Hz).  There is no point to have a period higher than the device",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
-    options.AddOptionOneValue("P", "tf-ros-period",
+                              cmnCommandLineOptions::OPTIONAL_OPTION,
+                              &jsonConfigFile);
+    options.AddOptionOneValue("p",
+                              "ros-period",
+                              "period in seconds to read all tool positions (default 0.002, 2 ms, "
+                              "500Hz).  There is no point to have a period higher than the device",
+                              cmnCommandLineOptions::OPTIONAL_OPTION,
+                              &rosPeriod);
+    options.AddOptionOneValue("P",
+                              "tf-ros-period",
                               "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &tfPeriod);
-    options.AddOptionMultipleValues("m", "component-manager",
+                              cmnCommandLineOptions::OPTIONAL_OPTION,
+                              &tfPeriod);
+    options.AddOptionMultipleValues("m",
+                                    "component-manager",
                                     "JSON files to configure component manager",
-                                    cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
-    options.AddOptionNoValue("D", "dark-mode",
-                             "replaces the default Qt palette with darker colors");
+                                    cmnCommandLineOptions::OPTIONAL_OPTION,
+                                    &managerConfig);
+    options.AddOptionNoValue("D", "dark-mode", "replaces the default Qt palette with darker colors");
 
     // check that all required options have been provided
     if (!options.Parse(ral.stripped_arguments(), std::cerr)) {
@@ -81,8 +88,7 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(forceDimension);
 
     // ROS CRTK bridge
-    mts_ros_crtk_bridge_provided * crtk_bridge
-        = new mts_ros_crtk_bridge_provided("haply_crtk_bridge", rosNode);
+    mts_ros_crtk_bridge_provided * crtk_bridge = new mts_ros_crtk_bridge_provided("haply_crtk_bridge", rosNode);
 
     componentManager->AddComponent(crtk_bridge);
 
@@ -103,23 +109,20 @@ int main(int argc, char * argv[])
     forceDimension->GetDeviceNames(devices);
     const NamesType::const_iterator endDevices = devices.end();
     NamesType::const_iterator device;
-    for (device = devices.begin();
-         device != endDevices;
-         ++device) {
+    for (device = devices.begin(); device != endDevices; ++device) {
         deviceWidget = new mtsHaplyQtWidget(*device + "-gui");
         deviceWidget->Configure();
         componentManager->AddComponent(deviceWidget);
-        componentManager->Connect(deviceWidget->GetName(), "Device",
-                                  forceDimension->GetName(), *device);
+        componentManager->Connect(deviceWidget->GetName(), "Device", forceDimension->GetName(), *device);
         tabWidget->addTab(deviceWidget, (*device).c_str());
     }
-    crtk_bridge->bridge_all_interfaces_provided(forceDimension->GetName(), "",
-                                                rosPeriod, tfPeriod);
+    crtk_bridge->bridge_all_interfaces_provided(forceDimension->GetName(), "", rosPeriod, tfPeriod);
     crtk_bridge->Connect();
 
     // custom user components
     if (!componentManager->ConfigureJSON(managerConfig)) {
-        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
+        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages"
+                           << std::endl;
         return -1;
     }
 
