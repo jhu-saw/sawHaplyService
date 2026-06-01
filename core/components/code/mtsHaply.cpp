@@ -25,6 +25,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <fstream>
 
+#include <cisstParameterTypes/prmBaseFrame.h>
 #include <cisstParameterTypes/prmOperatingState.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
 #include <cisstParameterTypes/prmPositionCartesianSet.h>
@@ -32,6 +33,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstParameterTypes/prmForceCartesianGet.h>
 #include <cisstParameterTypes/prmForceCartesianSet.h>
 #include <cisstParameterTypes/prmForceTorqueJointSet.h>
+#include <cisstParameterTypes/prmStateCartesian.h>
 #include <cisstParameterTypes/prmStateJoint.h>
 #include <cisstParameterTypes/prmConfigurationJoint.h>
 #include <cisstParameterTypes/prmEventButton.h>
@@ -142,8 +144,7 @@ class mtsHaplyDevice
     mtsHaplyDevice(const std::string & inverse3Id,
                    const std::string & verseGripId,
                    const std::string & name,
-                   const vctFrm3 & baseFrame,
-                   const std::string & referenceFrame,
+                   const prmBaseFrame & baseFrame,
                    const bool emulateGripper,
                    const double gripperRate,
                    const double gripperMin,
@@ -162,27 +163,31 @@ class mtsHaplyDevice
     void GetConfigurationJs(prmConfigurationJoint & result) const;
 
  protected:
+    std::string reference_frame(void) const;
+    const std::string & moving_frame(void) const;
     void GetRobotData(void);
+    void update_measured_cs(void);
     void SetControlMode(const mtsHaply::ControlModeType & mode);
 
     mtsHaplySocket * m_websocket;
 
     // crtk state
     void state_command(const std::string & command);
+    void emit_operating_state_event(void);
     prmOperatingState m_operating_state;
     mtsFunctionWrite m_operating_state_event;
 
     void servo_cp(const prmPositionCartesianSet & newPosition);
     void body_servo_cf(const prmForceCartesianSet & newForce);
     void use_gravity_compensation(const bool & gravityCompensation);
+    void set_base_frame(const prmPositionCartesianSet & baseFrame);
     void hold(void);
     void free(void);
 
     std::string m_inverse3_id;
     std::string m_verse_grip_id;
     std::string m_name;
-    vctFrm3 m_base_frame;
-    std::string m_reference_frame;
+    prmBaseFrame m_base_frame;
     struct {
         bool emulate;
         double rate;
@@ -202,8 +207,8 @@ class mtsHaplyDevice
 
     ButtonsData mButtonCallbacks;
 
-    prmPositionCartesianGet m_measured_cp, m_setpoint_cp;
-    prmVelocityCartesianGet m_measured_cv;
+    prmStateCartesian m_local_measured_cs, m_measured_cs;
+    prmPositionCartesianGet m_setpoint_cp;
     prmForceCartesianGet m_body_measured_cf;
     prmStateJoint m_gripper_measured_js;
     prmConfigurationJoint m_gripper_configuration_js;
@@ -228,8 +233,7 @@ class mtsHaplyDevice
 mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
                                const std::string & verseGripId,
                                const std::string & name,
-                               const vctFrm3 & baseFrame,
-                               const std::string & referenceFrame,
+                               const prmBaseFrame & baseFrame,
                                const bool emulateGripper,
                                const double gripperRate,
                                const double gripperMin,
@@ -243,7 +247,6 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
     m_verse_grip_id(verseGripId),
     m_name(name),
     m_base_frame(baseFrame),
-    m_reference_frame(referenceFrame),
     m_state_table(stateTable),
     m_interface(interfaceProvided) {
 
@@ -261,10 +264,19 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
 
     m_body_servo_cf.Force().SetAll(0.0);
 
-    m_measured_cp.SetReferenceFrame(m_reference_frame);
-    m_measured_cp.SetMovingFrame(m_name);
-    m_setpoint_cp.SetReferenceFrame(m_reference_frame);
+    m_local_measured_cs.ReferenceFrame() = reference_frame();
+    m_local_measured_cs.MovingFrame() = moving_frame();
+    m_local_measured_cs.Position().Assign(vctFrm3::Identity());
+    m_local_measured_cs.PositionIsValid() = false;
+    m_local_measured_cs.Velocity().Assign(vct6(0.0));
+    m_local_measured_cs.VelocityIsValid() = false;
+    m_local_measured_cs.Force().Assign(vct6(0.0));
+    m_local_measured_cs.ForceIsValid() = false;
+    update_measured_cs();
+
+    m_setpoint_cp.SetReferenceFrame(m_base_frame.reference_frame());
     m_setpoint_cp.SetMovingFrame(m_name);
+    m_setpoint_cp.SetValid(false);
     m_gripper_measured_js.Name().resize(1);
     m_gripper_measured_js.Name()[0] = "gripper";
     m_gripper_measured_js.Position().SetSize(1);
@@ -280,8 +292,9 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
 
     m_state_table->SetAutomaticAdvance(false);
     m_state_table->AddData(m_operating_state, "operating_state");
-    m_state_table->AddData(m_measured_cp, "measured_cp");
-    m_state_table->AddData(m_measured_cv, "measured_cv");
+    m_state_table->AddData(m_base_frame, "base_frame");
+    m_state_table->AddData(m_local_measured_cs, "local/measured_cs");
+    m_state_table->AddData(m_measured_cs, "measured_cs");
     m_state_table->AddData(m_body_measured_cf, "body/measured_cf");
     m_state_table->AddData(m_gripper_measured_js, "gripper/measured_js");
     m_state_table->AddData(m_setpoint_cp, "setpoint_cp");
@@ -290,8 +303,21 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
         // system messages
         m_interface->AddMessageEvents();
         // state
-        m_interface->AddCommandReadState(*m_state_table, m_measured_cp, "measured_cp");
-        m_interface->AddCommandReadState(*m_state_table, m_measured_cv, "measured_cv");
+        m_interface->AddCommandReadState(*m_state_table, m_base_frame, "base_frame");
+        m_interface->AddCommandReadState(*m_state_table, m_local_measured_cs, "local/measured_cs");
+        m_interface->AddCommandFilteredReadState(*m_state_table, m_local_measured_cs,
+                                                 prmStateCartesian::ToPositionCartesianGet,
+                                                 "local/measured_cp");
+        m_interface->AddCommandFilteredReadState(*m_state_table, m_local_measured_cs,
+                                                 prmStateCartesian::ToVelocityCartesianGet,
+                                                 "local/measured_cv");
+        m_interface->AddCommandReadState(*m_state_table, m_measured_cs, "measured_cs");
+        m_interface->AddCommandFilteredReadState(*m_state_table, m_measured_cs,
+                                                 prmStateCartesian::ToPositionCartesianGet,
+                                                 "measured_cp");
+        m_interface->AddCommandFilteredReadState(*m_state_table, m_measured_cs,
+                                                 prmStateCartesian::ToVelocityCartesianGet,
+                                                 "measured_cv");
         m_interface->AddCommandReadState(*m_state_table, m_body_measured_cf, "body/measured_cf");
         m_interface->AddCommandReadState(*m_state_table, m_gripper_measured_js, "gripper/measured_js");
         m_interface->AddCommandReadState(*m_state_table, m_setpoint_cp, "setpoint_cp");
@@ -299,6 +325,7 @@ mtsHaplyDevice::mtsHaplyDevice(const std::string & inverse3Id,
         m_interface->AddCommandWrite(&mtsHaplyDevice::servo_cp, this, "servo_cp");
         m_interface->AddCommandWrite(&mtsHaplyDevice::body_servo_cf, this, "body/servo_cf");
         m_interface->AddCommandWrite(&mtsHaplyDevice::use_gravity_compensation, this, "use_gravity_compensation");
+        m_interface->AddCommandWrite(&mtsHaplyDevice::set_base_frame, this, "set_base_frame");
         m_interface->AddCommandVoid(&mtsHaplyDevice::hold, this, "hold");
         m_interface->AddCommandVoid(&mtsHaplyDevice::free, this, "free");
         // configuration
@@ -332,6 +359,39 @@ mtsHaplyDevice::~mtsHaplyDevice(void) {
     delete m_state_table;
 }
 
+std::string mtsHaplyDevice::reference_frame(void) const
+{
+    return m_name + "_base";
+}
+
+const std::string & mtsHaplyDevice::moving_frame(void) const
+{
+    return m_name;
+}
+
+void mtsHaplyDevice::update_measured_cs(void)
+{
+    if (!m_base_frame.Valid() || !m_base_frame.Fixed()) {
+        m_measured_cs = m_local_measured_cs;
+        m_measured_cs.PositionIsValid() = false;
+        m_measured_cs.VelocityIsValid() = false;
+        m_measured_cs.ForceIsValid() = false;
+        return;
+    }
+
+    try {
+        m_base_frame.ApplyTo(m_local_measured_cs, m_measured_cs);
+    } catch (std::exception & exception) {
+        if (m_interface) {
+            m_interface->SendError(m_name + ": failed to apply base_frame (" + exception.what() + ")");
+        }
+        m_measured_cs = m_local_measured_cs;
+        m_measured_cs.PositionIsValid() = false;
+        m_measured_cs.VelocityIsValid() = false;
+        m_measured_cs.ForceIsValid() = false;
+    }
+}
+
 void mtsHaplyDevice::Startup(void) {
     std::stringstream ss;
     ss << m_name << ": properly initialized with ID 0x" << m_inverse3_id;
@@ -339,12 +399,13 @@ void mtsHaplyDevice::Startup(void) {
         ss << " and verse_grip ID 0x" << m_verse_grip_id;
     }
     m_interface->SendStatus(ss.str());
-    m_operating_state.IsHomed() = m_is_calibrated;
-    m_operating_state.State() = prmOperatingState::ENABLED;
-    m_operating_state_event(m_operating_state);
 
     // update current state
     m_state_table->Start();
+    m_operating_state.IsHomed() = m_is_calibrated;
+    m_operating_state.State() = prmOperatingState::ENABLED;
+    emit_operating_state_event();
+
     GetRobotData();
     this->free();
     m_state_table->Advance();
@@ -365,18 +426,30 @@ void mtsHaplyDevice::Run(void) {
     switch (mControlMode) {
     case mtsHaply::SERVO_CF: {
         vct3 force(m_body_servo_cf.Force()[0], m_body_servo_cf.Force()[1], m_body_servo_cf.Force()[2]);
-        vct3 forceInBase = m_base_frame.Rotation().Transpose() * force;
+        vct3 forceInBase = force;
+        if (m_base_frame.Valid() && m_base_frame.Fixed()) {
+            vctFrm3 baseFrame;
+            baseFrame.From(m_base_frame.transform());
+            forceInBase = baseFrame.Rotation().Transpose() * force;
+        }
         Json::Value values;
         values["x"] = forceInBase.X();
         values["y"] = forceInBase.Y();
         values["z"] = forceInBase.Z();
         commands["set_cursor_force"]["values"] = values;
         commands["set_gravity_compensation"] = m_use_gravity_compensation;
-        m_setpoint_cp.Position().Assign(m_measured_cp.Position());
-        m_setpoint_cp.SetValid(m_measured_cp.Valid());
+        m_setpoint_cp.Position().Assign(m_measured_cs.Position());
+        m_setpoint_cp.SetReferenceFrame(m_measured_cs.ReferenceFrame());
+        m_setpoint_cp.SetMovingFrame(m_measured_cs.MovingFrame());
+        m_setpoint_cp.SetValid(m_measured_cs.PositionIsValid());
     } break;
     case mtsHaply::SERVO_CP: {
-        vct3 goalInBase = m_base_frame.Inverse() * m_servo_cp.Goal().Translation();
+        vct3 goalInBase = m_servo_cp.Goal().Translation();
+        if (m_base_frame.Valid() && m_base_frame.Fixed()) {
+            vctFrm3 baseFrame;
+            baseFrame.From(m_base_frame.transform());
+            goalInBase = baseFrame.Inverse() * m_servo_cp.Goal().Translation();
+        }
         Json::Value values;
         values["x"] = goalInBase.X();
         values["y"] = goalInBase.Y();
@@ -384,6 +457,8 @@ void mtsHaplyDevice::Run(void) {
         commands["set_cursor_position"]["values"] = values;
         commands["set_gravity_compensation"] = m_use_gravity_compensation;
         m_setpoint_cp.Position().Assign(m_servo_cp.Goal());
+        m_setpoint_cp.SetReferenceFrame(m_base_frame.reference_frame());
+        m_setpoint_cp.SetMovingFrame(m_name);
         m_setpoint_cp.SetValid(true);
     } break;
     default:
@@ -471,7 +546,7 @@ void mtsHaplyDevice::GetRobotData(void) {
                             m_is_calibrated = status["calibrated"].asBool();
                             if (m_is_calibrated != was_calibrated) {
                                 m_operating_state.IsHomed() = m_is_calibrated;
-                                m_operating_state_event(m_operating_state);
+                                emit_operating_state_event();
                                 if (m_is_calibrated) {
                                     m_interface->SendStatus(m_name + ": device is calibrated.");
                                 }
@@ -482,7 +557,7 @@ void mtsHaplyDevice::GetRobotData(void) {
                             m_is_calibrated = (state["calibration_state"].asInt() >= 2); // 2 is typically "calibrated"
                             if (m_is_calibrated != was_calibrated) {
                                 m_operating_state.IsHomed() = m_is_calibrated;
-                                m_operating_state_event(m_operating_state);
+                                emit_operating_state_event();
                                 if (m_is_calibrated) {
                                     m_interface->SendStatus(m_name + ": device is calibrated.");
                                 }
@@ -494,8 +569,8 @@ void mtsHaplyDevice::GetRobotData(void) {
                                                                   "the end-effector in the home position.");
                                 m_calibration_warning_sent = true;
                             }
-                            m_measured_cp.SetValid(false);
-                            m_measured_cv.SetValid(false);
+                            m_local_measured_cs.PositionIsValid() = false;
+                            m_local_measured_cs.VelocityIsValid() = false;
                         }
                         else {
                             m_calibration_warning_sent = false;
@@ -505,17 +580,17 @@ void mtsHaplyDevice::GetRobotData(void) {
                             vct3 pos(state["cursor_position"]["x"].asDouble(),
                                      state["cursor_position"]["y"].asDouble(),
                                      state["cursor_position"]["z"].asDouble());
-                            m_measured_cp.Position().Translation() = pos;
+                            m_local_measured_cs.Position().Translation() = pos;
                             if (m_is_calibrated) {
-                                m_measured_cp.SetValid(true);
+                                m_local_measured_cs.PositionIsValid() = true;
                             }
 
                             vct3 vel(state["cursor_velocity"]["x"].asDouble(),
                                      state["cursor_velocity"]["y"].asDouble(),
                                      state["cursor_velocity"]["z"].asDouble());
-                            m_measured_cv.VelocityLinear() = vel;
+                            m_local_measured_cs.Velocity().XYZ().Assign(vel);
                             if (m_is_calibrated) {
-                                m_measured_cv.SetValid(true);
+                                m_local_measured_cs.VelocityIsValid() = true;
                             }
                             // Log that we have the first set of data
                             if (!m_first_data_sent) {
@@ -528,8 +603,8 @@ void mtsHaplyDevice::GetRobotData(void) {
                         }
                         else {
                             m_interface->SendWarning(m_name + ": state contains no cursor_position");
-                            m_measured_cp.SetValid(false);
-                            m_measured_cv.SetValid(false);
+                            m_local_measured_cs.PositionIsValid() = false;
+                            m_local_measured_cs.VelocityIsValid() = false;
                         }
                         break;
                     }
@@ -588,11 +663,8 @@ void mtsHaplyDevice::GetRobotData(void) {
                                                      state["orientation"]["w"].asDouble(),
                                                      VCT_NORMALIZE);
                                     vctMatRot3 rot(quat);
-                                    m_measured_cp.Position().Rotation().Assign(rot);
+                                    m_local_measured_cs.Position().Rotation().Assign(rot);
                                 }
-                                // apply base frame
-                                m_measured_cp.Position() = m_base_frame * m_measured_cp.Position();
-                                m_measured_cv.VelocityLinear() = m_base_frame.Rotation() * m_measured_cv.VelocityLinear();
 
                                 // Buttons
                                 if (state.isMember("buttons")) {
@@ -631,6 +703,8 @@ void mtsHaplyDevice::GetRobotData(void) {
                                             if (data->Pressed != pressed[bIdx]) {
                                                 data->Pressed = pressed[bIdx];
                                                 prmEventButton event;
+                                                event.SetValid(true);
+                                                event.SetTimestamp(m_state_table->GetTic());
                                                 event.Type() = data->Pressed ? prmEventButton::PRESSED
                                                                              : prmEventButton::RELEASED;
                                                 data->Function(event);
@@ -675,12 +749,16 @@ void mtsHaplyDevice::GetRobotData(void) {
         }
         else {
             // Identity orientation if no grip
-            m_measured_cp.Position().Rotation().Assign(vctMatRot3::Identity());
-            // apply base frame
-            m_measured_cp.Position() = m_base_frame * m_measured_cp.Position();
-            m_measured_cv.VelocityLinear() = m_base_frame.Rotation() * m_measured_cv.VelocityLinear();
+            m_local_measured_cs.Position().Rotation().Assign(vctMatRot3::Identity());
         }
     }
+    update_measured_cs();
+}
+
+void mtsHaplyDevice::emit_operating_state_event(void)
+{
+    m_operating_state.SetTimestamp(m_state_table->GetTic());
+    m_operating_state_event(m_operating_state);
 }
 
 void mtsHaplyDevice::state_command(const std::string & command) {
@@ -703,7 +781,7 @@ void mtsHaplyDevice::state_command(const std::string & command) {
             m_interface->SendStatus(this->m_name + ": current state is \""
                                     + prmOperatingState::StateTypeToString(m_operating_state.State()) + "\"");
             m_operating_state.SetValid(true);
-            m_operating_state_event(m_operating_state);
+            emit_operating_state_event();
         }
         else {
             m_interface->SendWarning(this->m_name + ": " + humanReadableMessage);
@@ -756,11 +834,25 @@ void mtsHaplyDevice::hold(void) {
     }
     GetRobotData();
     SetControlMode(mtsHaply::SERVO_CP);
-    m_servo_cp.Goal().Assign(m_measured_cp.Position());
+    m_servo_cp.Goal().Assign(m_measured_cs.Position());
     m_new_servo_cp = true;
 }
 
 void mtsHaplyDevice::use_gravity_compensation(const bool & gravity) { m_use_gravity_compensation = gravity; }
+
+void mtsHaplyDevice::set_base_frame(const prmPositionCartesianSet & baseFrame) {
+    if (baseFrame.Valid()) {
+        m_base_frame.reference_frame() = baseFrame.ReferenceFrame().empty()
+            ? std::string("user")
+            : baseFrame.ReferenceFrame();
+        m_base_frame.transform().FromNormalized(baseFrame.Goal());
+    } else {
+        m_base_frame.reference_frame().clear();
+        m_base_frame.transform().Assign(vctFrm4x4::Identity());
+    }
+    update_measured_cs();
+    m_setpoint_cp.SetReferenceFrame(m_measured_cs.ReferenceFrame());
+}
 
 void mtsHaplyDevice::free(void) {
     SetControlMode(mtsHaply::SERVO_CF);
@@ -804,8 +896,7 @@ void mtsHaply::Configure(const std::string & filename) {
         std::string VerseGripID;
         bool Inverse3Found;
         bool VerseGripFound;
-        vctFrm3 BaseFrame;
-        std::string ReferenceFrame;
+        prmBaseFrame BaseFrame;
         bool GripperEmulate;
         double GripperRate;
         double GripperMin;
@@ -845,17 +936,17 @@ void mtsHaply::Configure(const std::string & filename) {
             dr.Inverse3Found = false;
             dr.VerseGripFound = false;
 
-            dr.BaseFrame.Assign(vctFrm3::Identity());
-            dr.ReferenceFrame = dr.Name + "_base";
+            dr.BaseFrame.reference_frame() = "user";
+            dr.BaseFrame.transform().Assign(vctFrm4x4::Identity());
             if (jsonValue.isMember("base_frame")) {
                 const Json::Value jsonBaseFrame = jsonValue["base_frame"];
                 if (jsonBaseFrame.isMember("reference_frame")) {
-                    dr.ReferenceFrame = jsonBaseFrame["reference_frame"].asString();
+                    dr.BaseFrame.reference_frame() = jsonBaseFrame["reference_frame"].asString();
                 }
                 if (jsonBaseFrame.isMember("transform")) {
                     vctFrm4x4 frame;
                     cmnDataJSON<vctFrm4x4>::DeSerializeText(frame, jsonBaseFrame["transform"]);
-                    dr.BaseFrame.From(frame);
+                    dr.BaseFrame.transform().Assign(frame);
                 }
             }
 
@@ -969,8 +1060,8 @@ void mtsHaply::Configure(const std::string & filename) {
         dr.VerseGripSerial = 0;
         dr.Inverse3Found = false;
         dr.VerseGripFound = false;
-        dr.BaseFrame.Assign(vctFrm3::Identity());
-        dr.ReferenceFrame = "Test_base";
+        dr.BaseFrame.reference_frame() = "user";
+        dr.BaseFrame.transform().Assign(vctFrm4x4::Identity());
         dr.GripperEmulate = true;
         dr.GripperRate = 1.0;
         dr.GripperMin = -0.5;
@@ -1062,12 +1153,55 @@ void mtsHaply::Configure(const std::string & filename) {
     for (const auto & req : requestedDevices) {
         if (!req.Inverse3Found) {
             allFound = false;
-            break;
+            std::stringstream ss;
+            ss << "Configure: device \"" << req.Name << "\" with inverse3 serial 0x"
+               << std::hex << req.Inverse3Serial << std::dec << " not found. Discovered inverse3 devices: [";
+            if (m_websocket->m_ws_data.isMember("inverse3")) {
+                const Json::Value & disc = m_websocket->m_ws_data["inverse3"];
+                if (disc.isArray() && disc.size() > 0) {
+                    for (unsigned int i = 0; i < disc.size(); ++i) {
+                        ss << "\"0x" << disc[i]["device_id"].asString() << "\"";
+                        if (i < disc.size() - 1) ss << ", ";
+                    }
+                } else {
+                    ss << "none";
+                }
+            } else {
+                ss << "none";
+            }
+            ss << "]";
+            CMN_LOG_CLASS_INIT_ERROR << ss.str() << std::endl;
+        }
+        if (!req.VerseGripFound) {
+            allFound = false;
+            std::stringstream ss;
+            ss << "Configure: device \"" << req.Name << "\" with verse_grip serial 0x"
+               << std::hex << req.VerseGripSerial << std::dec << " not found. Discovered verse_grip devices: [";
+            const char * gripCollections[] = {"verse_grip", "custom_verse_grip", "wireless_verse_grip"};
+            bool anyGrip = false;
+            bool firstEntry = true;
+            for (int c = 0; c < 3; ++c) {
+                if (m_websocket->m_ws_data.isMember(gripCollections[c])) {
+                    const Json::Value & grips = m_websocket->m_ws_data[gripCollections[c]];
+                    if (grips.isArray()) {
+                        for (unsigned int i = 0; i < grips.size(); ++i) {
+                            if (!firstEntry) ss << ", ";
+                            ss << "\"0x" << grips[i]["device_id"].asString() << "\" (" << gripCollections[c] << ")";
+                            firstEntry = false;
+                            anyGrip = true;
+                        }
+                    }
+                }
+            }
+            if (!anyGrip) {
+                ss << "none";
+            }
+            ss << "]";
+            CMN_LOG_CLASS_INIT_ERROR << ss.str() << std::endl;
         }
     }
 
     if (!allFound) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: one or more requested devices not found." << std::endl;
         exit(-1);
     }
 
@@ -1092,7 +1226,6 @@ void mtsHaply::Configure(const std::string & filename) {
                                                      req.VerseGripID,
                                                      req.Name,
                                                      req.BaseFrame,
-                                                     req.ReferenceFrame,
                                                      req.GripperEmulate,
                                                      req.GripperRate,
                                                      req.GripperMin,

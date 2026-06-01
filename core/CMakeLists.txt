@@ -22,7 +22,6 @@ add_subdirectory (components)
 
 set (sawHaplyService_DIR "${sawHaplyServiceCore_BINARY_DIR}/components")
 add_subdirectory (examples)
-add_subdirectory (share)
 
 include (CPack)
 cpack_add_component (sawHaplyService)
@@ -32,5 +31,3 @@ cpack_add_component (sawHaplyService-Qt
                      DEPENDS sawHaplyService)
 cpack_add_component (sawHaplyService-Examples
                      DEPENDS sawHaplyService sawHaplyService-Qt)
-cpack_add_component (sawHaplyService-Share
-                     DEPENDS sawHaplyService sawHaplyService-Share)

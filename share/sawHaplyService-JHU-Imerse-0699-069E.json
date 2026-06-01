@@ -1,0 +1,15 @@
+{
+    "uri": "ws://localhost:10001",
+    "devices": [
+        {
+            "name": "MTML",
+            "base_serial": "0699",
+            "stylus_serial": "1605"
+        },
+        {
+            "name": "MTMR",
+            "base_serial": "069E",
+            "stylus_serial": "1606"
+        }
+    ]
+}
