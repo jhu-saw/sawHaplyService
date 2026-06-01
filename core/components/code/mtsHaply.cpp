@@ -226,6 +226,7 @@ class mtsHaplyDevice
     bool m_is_calibrated = false;
     bool m_calibration_warning_sent = false;
     bool m_awake_warning_sent = false;
+    double m_last_battery_level = 0.0;
     int m_last_battery_decile = 10;
 };
 
@@ -371,7 +372,7 @@ const std::string & mtsHaplyDevice::moving_frame(void) const
 
 void mtsHaplyDevice::update_measured_cs(void)
 {
-    if (!m_base_frame.Valid() || !m_base_frame.Fixed()) {
+    if (!m_base_frame.ValidDefinition() || !m_base_frame.Fixed()) {
         m_measured_cs = m_local_measured_cs;
         m_measured_cs.PositionIsValid() = false;
         m_measured_cs.VelocityIsValid() = false;
@@ -427,7 +428,7 @@ void mtsHaplyDevice::Run(void) {
     case mtsHaply::SERVO_CF: {
         vct3 force(m_body_servo_cf.Force()[0], m_body_servo_cf.Force()[1], m_body_servo_cf.Force()[2]);
         vct3 forceInBase = force;
-        if (m_base_frame.Valid() && m_base_frame.Fixed()) {
+        if (m_base_frame.ValidDefinition() && m_base_frame.Fixed()) {
             vctFrm3 baseFrame;
             baseFrame.From(m_base_frame.transform());
             forceInBase = baseFrame.Rotation().Transpose() * force;
@@ -445,7 +446,7 @@ void mtsHaplyDevice::Run(void) {
     } break;
     case mtsHaply::SERVO_CP: {
         vct3 goalInBase = m_servo_cp.Goal().Translation();
-        if (m_base_frame.Valid() && m_base_frame.Fixed()) {
+        if (m_base_frame.ValidDefinition() && m_base_frame.Fixed()) {
             vctFrm3 baseFrame;
             baseFrame.From(m_base_frame.transform());
             goalInBase = baseFrame.Inverse() * m_servo_cp.Goal().Translation();
@@ -723,10 +724,12 @@ void mtsHaplyDevice::GetRobotData(void) {
                                            << "%";
                                         m_interface->SendStatus(ss.str());
                                         m_first_battery_sent = true;
+                                        m_last_battery_level = battery;
                                         m_last_battery_decile = current_decile;
                                     }
                                     else {
-                                        if (current_decile < m_last_battery_decile) {
+                                        const bool battery_level_decreased = battery < m_last_battery_level;
+                                        if (battery_level_decreased && (current_decile < m_last_battery_decile)) {
                                             std::stringstream ss;
                                             ss << m_name << ": verse grip battery dropped below "
                                                << (current_decile + 1) * 10 << "% (" << (int)(battery * 100.0) << "%).";
@@ -736,6 +739,7 @@ void mtsHaplyDevice::GetRobotData(void) {
                                         else if (current_decile > m_last_battery_decile) {
                                             m_last_battery_decile = current_decile;
                                         }
+                                        m_last_battery_level = battery;
                                     }
                                 }
                                 break;
@@ -936,7 +940,7 @@ void mtsHaply::Configure(const std::string & filename) {
             dr.Inverse3Found = false;
             dr.VerseGripFound = false;
 
-            dr.BaseFrame.reference_frame() = "user";
+            dr.BaseFrame.reference_frame() = dr.Name + "_base";
             dr.BaseFrame.transform().Assign(vctFrm4x4::Identity());
             if (jsonValue.isMember("base_frame")) {
                 const Json::Value jsonBaseFrame = jsonValue["base_frame"];
@@ -1060,7 +1064,7 @@ void mtsHaply::Configure(const std::string & filename) {
         dr.VerseGripSerial = 0;
         dr.Inverse3Found = false;
         dr.VerseGripFound = false;
-        dr.BaseFrame.reference_frame() = "user";
+        dr.BaseFrame.reference_frame() = dr.Name + "_base";
         dr.BaseFrame.transform().Assign(vctFrm4x4::Identity());
         dr.GripperEmulate = true;
         dr.GripperRate = 1.0;

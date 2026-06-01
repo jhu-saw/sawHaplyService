@@ -45,6 +45,7 @@ CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsHaplyQtWidget, mtsComponent, std::strin
 mtsHaplyQtWidget::mtsHaplyQtWidget(const std::string & componentName, double periodInSeconds):
     mtsComponent(componentName),
     TimerPeriodInMilliseconds(periodInSeconds) {
+    this->AddTag("UI");
     QMMessage = new mtsMessageQtWidget();
     QPOState = new prmOperatingStateQtWidget();
 
