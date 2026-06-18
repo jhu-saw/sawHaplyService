@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2017-2024 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2017-2026 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -23,50 +23,38 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
-find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.2.0 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 # websocketpp dependency
 find_package(websocketpp REQUIRED)
 
-if (cisst_FOUND_AS_REQUIRED)
+# catkin/ROS paths
+cisst_set_output_path ()
 
-  # load cisst configuration
-  include (${CISST_USE_FILE})
+# sawHaplyService has been compiled within cisst, we should find it automatically
+find_package (sawHaplyService 2.0.0 REQUIRED)
 
-  # catkin/ROS paths
-  cisst_set_output_path ()
+if (CISST_HAS_QT)
 
-  # sawHaplyService has been compiled within cisst, we should find it automatically
-  find_package (sawHaplyService 2.0.0)
+  # sawHaplyService configuration
+  include_directories (${sawHaplyService_INCLUDE_DIR})
+  link_directories (${sawHaplyService_LIBRARY_DIR})
 
-  if (sawHaplyService_FOUND AND CISST_HAS_QT)
+  add_executable (sawHaplyServiceQtExample main.cpp)
+  set_target_properties (sawHaplyServiceQtExample PROPERTIES
+                         COMPONENTS sawHaplyService-Examples
+                         FOLDER "sawHaplyService")
 
-    # sawHaplyService configuration
-    include_directories (${sawHaplyService_INCLUDE_DIR})
-    link_directories (${sawHaplyService_LIBRARY_DIR})
+  # link against non cisst libraries and saw components
+  target_link_libraries (sawHaplyServiceQtExample
+                         ${sawHaplyService_LIBRARIES}
+                         ${sawHaplyServiceQt_LIBRARIES}
+                         ${QT_LIBRARIES}
+                         ${cisst_LIBRARIES})
 
-    add_executable (sawHaplyServiceQtExample main.cpp)
-    set_target_properties (sawHaplyServiceQtExample PROPERTIES
-                           COMPONENTS sawHaplyService-Examples
-                           FOLDER "sawHaplyService")
+  install (TARGETS sawHaplyServiceQtExample COMPONENT sawHaplyService-Examples
+           RUNTIME DESTINATION bin
+           LIBRARY DESTINATION lib
+           ARCHIVE DESTINATION lib)
 
-    # link against non cisst libraries and saw components
-    target_link_libraries (sawHaplyServiceQtExample
-                           ${sawHaplyService_LIBRARIES}
-                           ${sawHaplyServiceQt_LIBRARIES}
-                           ${QT_LIBRARIES}
-                           )
-
-    # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (sawHaplyServiceQtExample ${REQUIRED_CISST_LIBRARIES})
-
-    install (TARGETS sawHaplyServiceQtExample COMPONENT sawHaplyService-Examples
-             RUNTIME DESTINATION bin
-             LIBRARY DESTINATION lib
-             ARCHIVE DESTINATION lib)
-
-  else (sawHaplyService_FOUND AND CISST_HAS_QT)
-    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawHaplyService and cisstQt")
-  endif (sawHaplyService_FOUND AND CISST_HAS_QT)
-
-endif (cisst_FOUND_AS_REQUIRED)
+endif (CISST_HAS_QT)

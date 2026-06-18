@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2017-2024 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2017-2026 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -54,50 +54,36 @@ set (REQUIRED_CISST_LIBRARIES
   cisstParameterTypes
   cisstQt)
 
-find_package (cisst 1.2.1 REQUIRED ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.2.1 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND_AS_REQUIRED)
+# set paths
+cisst_set_output_path ()
 
-  # load cisst configuration
-  include (${CISST_USE_FILE})
+# sawHaplyService has been compiled within cisst, we should find it automatically
+find_package (sawHaplyService 2.1.0 REQUIRED)
+find_package (websocketpp REQUIRED)
 
-  # set paths
-  cisst_set_output_path ()
+# sawHaplyService configuration
+include_directories (${sawHaplyService_INCLUDE_DIR} ${haply_SOURCE_DIR})
+link_directories (${sawHaplyService_LIBRARY_DIR})
 
-  # sawHaplyService has been compiled within cisst, we should find it automatically
-  find_package (sawHaplyService 2.1.0)
-  find_package (websocketpp REQUIRED)
+add_executable (haply src/haply.cpp)
+target_link_libraries (haply
+  ${sawHaplyService_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${cisst_LIBRARIES})
 
-  if (sawHaplyService_FOUND)
+install (TARGETS haply
+  LIBRARY DESTINATION lib/${PROJECT_NAME}
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  INCLUDES DESTINATION include)
 
-    # sawHaplyService configuration
-    include_directories (${sawHaplyService_INCLUDE_DIR} ${haply_SOURCE_DIR})
-    link_directories (${sawHaplyService_LIBRARY_DIR})
-
-    add_executable (haply src/haply.cpp)
-    target_link_libraries (haply
-      ${sawHaplyService_LIBRARIES}
-      ${catkin_LIBRARIES})
-
-    # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (haply ${REQUIRED_CISST_LIBRARIES})
-
-    install (TARGETS haply
-      LIBRARY DESTINATION lib/${PROJECT_NAME}
-      RUNTIME DESTINATION lib/${PROJECT_NAME}
-      LIBRARY DESTINATION lib
-      INCLUDES DESTINATION include)
-
-    if (ROS_VERSION EQUAL 2)
-      # C++
-      ament_target_dependencies (
-        haply
-        ${ROS2_depends}
-        )
-      ament_package ()
-    endif ()
-
-  else (sawHaplyService_FOUND)
-    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawHaplyService")
-  endif (sawHaplyService_FOUND)
-endif (cisst_FOUND_AS_REQUIRED)
+if (ROS_VERSION EQUAL 2)
+  # C++
+  ament_target_dependencies (
+    haply
+    ${ROS2_depends}
+    )
+  ament_package ()
+endif ()
