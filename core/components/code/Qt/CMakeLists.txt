@@ -25,17 +25,11 @@ find_package (cisst REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 # for Qt generated header files
 include_directories (${CMAKE_CURRENT_BINARY_DIR})
-if (CISST_HAS_QT4)
-  qt4_wrap_cpp (SAW_FORCE_DIMENSION_SDK_QT_WRAP_CPP
-                ${sawHaplyService_HEADER_DIR}/mtsHaplyQtWidget.h)
-else (CISST_HAS_QT4)
-  set (CMAKE_AUTOMOC ON)
-endif (CISST_HAS_QT4)
+set (CMAKE_AUTOMOC ON)
 
 add_library (sawHaplyServiceQt
              ${sawHaplyService_HEADER_DIR}/mtsHaplyQtWidget.h
-             mtsHaplyQtWidget.cpp
-             ${SAW_FORCE_DIMENSION_SDK_QT_WRAP_CPP})
+             mtsHaplyQtWidget.cpp)
 set_target_properties (sawHaplyServiceQt PROPERTIES
                        VERSION ${sawHaplyService_VERSION}
                        FOLDER "sawHaplyService")
