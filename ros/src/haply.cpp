@@ -18,8 +18,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
-#include <cisstCommon/cmnCommandLineOptions.h>
-#include <cisstCommon/cmnQt.h>
+#include <cisstMultiTask/mtsCommandLineOptionsQt.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <sawHaplyService/mtsHaply.h>
 #include <sawHaplyService/mtsHaplyQtWidget.h>
@@ -42,11 +41,10 @@ int main(int argc, char * argv[]) {
     auto rosNode = ral.node();
 
     // parse options
-    cmnCommandLineOptions options;
+    mtsCommandLineOptionsQt options;
     std::string jsonConfigFile = "";
     double rosPeriod = 2.0 * cmn_ms;
     double tfPeriod = 20.0 * cmn_ms;
-    std::list<std::string> managerConfig;
 
     options.AddOptionOneValue("j",
                               "json-config",
@@ -64,12 +62,6 @@ int main(int argc, char * argv[]) {
                               "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).",
                               cmnCommandLineOptions::OPTIONAL_OPTION,
                               &tfPeriod);
-    options.AddOptionMultipleValues("m",
-                                    "component-manager",
-                                    "JSON files to configure component manager",
-                                    cmnCommandLineOptions::OPTIONAL_OPTION,
-                                    &managerConfig);
-    options.AddOptionNoValue("D", "dark-mode", "replaces the default Qt palette with darker colors");
 
     // check that all required options have been provided
     if (!options.Parse(ral.stripped_arguments(), std::cerr)) {
@@ -94,10 +86,6 @@ int main(int argc, char * argv[]) {
 
     // create a Qt user interface
     QApplication application(argc, argv);
-    cmnQt::QApplicationExitsOnCtrlC();
-    if (options.IsSet("dark-mode")) {
-        cmnQt::SetDarkMode();
-    }
 
     // organize all widgets in a tab widget
     QTabWidget * tabWidget = new QTabWidget;
@@ -120,11 +108,7 @@ int main(int argc, char * argv[]) {
     crtk_bridge->Connect();
 
     // custom user components
-    if (!componentManager->ConfigureJSON(managerConfig)) {
-        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages"
-                           << std::endl;
-        return -1;
-    }
+    options.Apply();
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);

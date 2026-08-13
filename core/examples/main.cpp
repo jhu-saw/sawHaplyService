@@ -18,7 +18,6 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstCommon/cmnUnits.h>
 #include <cisstMultiTask/mtsCommandLineOptionsQt.h>
-#include <cisstCommon/cmnQt.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <sawHaplyService/mtsHaply.h>
 #include <sawHaplyService/mtsHaplyQtWidget.h>
@@ -60,7 +59,6 @@ int main(int argc, char * argv[]) {
 
     // create a Qt user interface
     QApplication application(argc, argv);
-    cmnQt::QApplicationExitsOnCtrlC();
 
     // organize all widgets in a tab widget
     QTabWidget * tabWidget = new QTabWidget;

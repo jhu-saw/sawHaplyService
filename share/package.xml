@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<package>
-  <name>saw_haply_config</name>
+<package format="3">
+  <name>haply_config</name>
   <version>2.1.0</version>
   <description>sawHaplyService config files</description>
 
@@ -9,8 +9,10 @@
   <license>cisst</license>
   <url>https://github.com/jhu-saw/sawHaplyService</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
 
   <export>
+    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
   </export>
 </package>
