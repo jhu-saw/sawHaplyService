@@ -54,7 +54,7 @@ set (REQUIRED_CISST_LIBRARIES
   cisstParameterTypes
 )
 
-find_package (cisst 1.2.1 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.5 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 # set paths
 cisst_set_output_path ()
