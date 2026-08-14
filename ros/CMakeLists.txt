@@ -60,7 +60,7 @@ find_package (cisst 1.2.1 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 cisst_set_output_path ()
 
 # sawHaplyService has been compiled within cisst, we should find it automatically
-find_package (sawHaplyService 0.1.0 REQUIRED)
+find_package (sawHaplyService 1.0.0 REQUIRED)
 find_package (websocketpp REQUIRED)
 
 # sawHaplyService configuration
