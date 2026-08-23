@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>haply_config</name>
-  <version>2.1.0</version>
+  <version>1.0.0</version>
   <description>sawHaplyService config files</description>
 
   <maintainer email="anton.deguet@jhu.edu">Anton Deguet</maintainer>

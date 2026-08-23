@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required (VERSION 3.10)
-project (haply VERSION 2.1.0)
+project (haply VERSION 1.0.0)
 
 # first test for ROS1
 find_package (catkin QUIET
@@ -54,13 +54,13 @@ set (REQUIRED_CISST_LIBRARIES
   cisstParameterTypes
 )
 
-find_package (cisst 1.2.1 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.5 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 # set paths
 cisst_set_output_path ()
 
 # sawHaplyService has been compiled within cisst, we should find it automatically
-find_package (sawHaplyService 2.1.0 REQUIRED)
+find_package (sawHaplyService 1.0.0 REQUIRED)
 find_package (websocketpp REQUIRED)
 
 # sawHaplyService configuration

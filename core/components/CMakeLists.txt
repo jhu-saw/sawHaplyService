@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required (VERSION 3.10)
-project (sawHaplyService VERSION 2.1.0)
+project (sawHaplyService VERSION 1.0.0)
 
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
@@ -22,7 +22,7 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
 # websocketpp dependency
 find_package(websocketpp REQUIRED)
 
-find_package (cisst REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.5 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 if (NOT CISST_HAS_JSON)
   message( FATAL_ERROR "sawHaplyService requires cisst to be built with JSON" )

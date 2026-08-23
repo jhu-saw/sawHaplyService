@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required (VERSION 3.16)
-project (haply_config VERSION 2.1.0)
+project (haply_config VERSION 1.0.0)
 
 # ROS 1
 find_package (catkin QUIET)

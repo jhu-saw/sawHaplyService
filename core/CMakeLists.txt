@@ -10,9 +10,9 @@
 # --- end cisst license ---
 
 cmake_minimum_required(VERSION 3.10)
-project (sawHaplyServiceCore VERSION 2.1.0)
+project (sawHaplyServiceCore VERSION 1.0.0)
 
-find_package (cisst REQUIRED)
+find_package (cisst 1.5 REQUIRED)
 cisst_cpack_settings (
   VENDOR "JHU"
   MAINTAINER "anton.deguet@jhu.edu")

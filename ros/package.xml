@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>haply</name>
-  <version>2.1.0</version>
+  <version>1.0.0</version>
   <description>The Force Dimension SDK ROS package</description>
   <maintainer email="anton.deguet@jhu.edu">Anton Deguet</maintainer>
   <author email="anton.deguet@jhu.edu">Anton Deguet</author>

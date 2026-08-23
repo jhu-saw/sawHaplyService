@@ -10,7 +10,7 @@
 # --- end cisst license ---
 
 cmake_minimum_required (VERSION 3.10)
-project (sawHaplyServiceExamples VERSION 2.1.0)
+project (sawHaplyServiceExamples VERSION 1.0.0)
 
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
@@ -23,7 +23,7 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
-find_package (cisst 1.2.0 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.5 REQUIRED COMPONENTS ${REQUIRED_CISST_LIBRARIES})
 
 # websocketpp dependency
 find_package(websocketpp REQUIRED)
@@ -32,7 +32,7 @@ find_package(websocketpp REQUIRED)
 cisst_set_output_path ()
 
 # sawHaplyService has been compiled within cisst, we should find it automatically
-find_package (sawHaplyService 2.0.0 REQUIRED)
+find_package (sawHaplyService 1.0.0 REQUIRED)
 
 if (CISST_HAS_QT)
 
