@@ -22,9 +22,14 @@ else (catkin_FOUND)
   find_package (ament_cmake QUIET)
   if (ament_cmake_FOUND)
     install (FILES
+      sawHaplyService-JHU-Imerse-0699-069E.json
       sawHaplyService-JHU-Imerse-0699.json
       sawHaplyService-JHU-Imerse.json
       system-MTMR-Haply-PSM1_KIN_SIMULATED-Teleop.json
+      DESTINATION share/${PROJECT_NAME})
+    install (DIRECTORY dvrk_newton
+      DESTINATION share/${PROJECT_NAME})
+    install (DIRECTORY launch
       DESTINATION share/${PROJECT_NAME})
 
     ament_package ()

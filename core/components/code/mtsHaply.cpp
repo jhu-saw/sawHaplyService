@@ -1080,13 +1080,56 @@ void mtsHaply::Configure(const std::string & filename) {
     Json::FastWriter writer;
     m_websocket->SendRequest(writer.write(update_request));
 
+    const char * gripCollections[] = {"verse_grip", "custom_verse_grip", "wireless_verse_grip"};
+    auto findDeviceSerial = [this](const char * collection, const unsigned int serial, std::string & id) {
+        if (m_websocket->m_ws_data.isMember(collection)) {
+            const Json::Value devices = m_websocket->m_ws_data[collection];
+            if (devices.isArray()) {
+                for (unsigned int i = 0; i < devices.size(); ++i) {
+                    try {
+                        const unsigned int foundSerial
+                            = std::stoull(devices[i]["device_id"].asString(), nullptr, 16);
+                        if (foundSerial == serial) {
+                            id = devices[i]["device_id"].asString();
+                            return true;
+                        }
+                    }
+                    catch (...) {
+                        // Ignore invalid device IDs
+                    }
+                }
+            }
+        }
+        return false;
+    };
+    auto findRequestedDevices = [&]() {
+        bool allFound = true;
+        for (auto & req : requestedDevices) {
+            req.Inverse3Found = findDeviceSerial("inverse3", req.Inverse3Serial, req.Inverse3ID);
+            req.VerseGripFound = false;
+            if (req.VerseGripSerial != 0) {
+                for (const auto & collection : gripCollections) {
+                    if (findDeviceSerial(collection, req.VerseGripSerial, req.VerseGripID)) {
+                        req.VerseGripFound = true;
+                        break;
+                    }
+                }
+            } else {
+                req.VerseGripFound = true; // Not requested, so ok
+            }
+            allFound = allFound && req.Inverse3Found && req.VerseGripFound;
+        }
+        return allFound;
+    };
+
     // Poll for discovery
     bool receivedData = false;
     for (int i = 0; i < 200; ++i) { // ~2 seconds timeout
         m_websocket->Poll();
-        if (m_websocket->m_ws_connected
-            && (m_websocket->m_ws_data.isMember("inverse3") || m_websocket->m_ws_data.isMember("verse_grip"))) {
+        if (m_websocket->m_ws_connected && !m_websocket->m_ws_data.empty()) {
             receivedData = true;
+        }
+        if (receivedData && findRequestedDevices()) {
             break;
         }
         osaSleep(10.0 * cmn_ms);
@@ -1098,59 +1141,7 @@ void mtsHaply::Configure(const std::string & filename) {
         exit(-1);
     }
 
-    const Json::Value discoveredDevices = m_websocket->m_ws_data["inverse3"];
-
-    // Validate requested devices against discovered
-    for (auto & req : requestedDevices) {
-        // Find Inverse3
-        if (m_websocket->m_ws_data.isMember("inverse3")) {
-            const Json::Value discoveredInv3 = m_websocket->m_ws_data["inverse3"];
-            if (discoveredInv3.isArray()) {
-                for (unsigned int i = 0; i < discoveredInv3.size(); ++i) {
-                    try {
-                        unsigned int foundSerial = std::stoull(discoveredInv3[i]["device_id"].asString(), nullptr, 16);
-                        if (foundSerial == req.Inverse3Serial) {
-                            req.Inverse3Found = true;
-                            req.Inverse3ID = discoveredInv3[i]["device_id"].asString();
-                            break;
-                        }
-                    }
-                    catch (...) {
-                        // Ignore invalid device IDs
-                    }
-                }
-            }
-        }
-        // Find VerseGrip
-        if (req.VerseGripSerial != 0) {
-            const char * gripCollections[] = {"verse_grip", "custom_verse_grip", "wireless_verse_grip"};
-            for (int c = 0; c < 3; ++c) {
-                if (m_websocket->m_ws_data.isMember(gripCollections[c])) {
-                    const Json::Value grips = m_websocket->m_ws_data[gripCollections[c]];
-                    if (grips.isArray()) {
-                        for (unsigned int i = 0; i < grips.size(); ++i) {
-                            try {
-                                unsigned int foundSerial = std::stoull(grips[i]["device_id"].asString(), nullptr, 16);
-                                if (foundSerial == req.VerseGripSerial) {
-                                    req.VerseGripFound = true;
-                                    req.VerseGripID = grips[i]["device_id"].asString();
-                                    break;
-                                }
-                            }
-                            catch (...) {
-                                // Ignore invalid device IDs
-                            }
-                        }
-                    }
-                }
-                if (req.VerseGripFound)
-                    break;
-            }
-        }
-        else {
-            req.VerseGripFound = true; // Not requested, so ok
-        }
-    }
+    findRequestedDevices();
 
     // Check if all requested devices were found
     bool allFound = true;
@@ -1181,16 +1172,15 @@ void mtsHaply::Configure(const std::string & filename) {
             std::stringstream ss;
             ss << "Configure: device \"" << req.Name << "\" with verse_grip serial 0x"
                << std::hex << req.VerseGripSerial << std::dec << " not found. Discovered verse_grip devices: [";
-            const char * gripCollections[] = {"verse_grip", "custom_verse_grip", "wireless_verse_grip"};
             bool anyGrip = false;
             bool firstEntry = true;
-            for (int c = 0; c < 3; ++c) {
-                if (m_websocket->m_ws_data.isMember(gripCollections[c])) {
-                    const Json::Value & grips = m_websocket->m_ws_data[gripCollections[c]];
+            for (const auto & collection : gripCollections) {
+                if (m_websocket->m_ws_data.isMember(collection)) {
+                    const Json::Value & grips = m_websocket->m_ws_data[collection];
                     if (grips.isArray()) {
                         for (unsigned int i = 0; i < grips.size(); ++i) {
                             if (!firstEntry) ss << ", ";
-                            ss << "\"0x" << grips[i]["device_id"].asString() << "\" (" << gripCollections[c] << ")";
+                            ss << "\"0x" << grips[i]["device_id"].asString() << "\" (" << collection << ")";
                             firstEntry = false;
                             anyGrip = true;
                         }
