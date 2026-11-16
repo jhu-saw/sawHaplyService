@@ -1,0 +1,10 @@
+# Backend settings for the Haply patient-cart example in NVIDIA Isaac Sim.
+# Select worker Python with DVRK_ISAAC_SIM_PYTHON or ISAAC_SIM_DIR.
+command_queue_capacity: 32
+generated_root: null
+headless: false
+renderer: RaytracedLighting
+render_rate_hz: 30.0
+scene: null
+simulation_rate_hz: 120.0
+state_publish_rate_hz: 100.0

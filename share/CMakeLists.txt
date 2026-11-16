@@ -27,7 +27,7 @@ else (catkin_FOUND)
       sawHaplyService-JHU-Imerse.json
       system-MTMR-Haply-PSM1_KIN_SIMULATED-Teleop.json
       DESTINATION share/${PROJECT_NAME})
-    install (DIRECTORY dvrk_newton
+    install (DIRECTORY dvrk_simulation
       DESTINATION share/${PROJECT_NAME})
     install (DIRECTORY launch
       DESTINATION share/${PROJECT_NAME})

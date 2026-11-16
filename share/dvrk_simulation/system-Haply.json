@@ -4,6 +4,15 @@
     "component_manager": {
         "components": [
             {
+                "shared-library": "sawGenericInput",
+                "class-name": "mtsEvdev",
+                "constructor-arg": {
+                    "Name": "Pedals",
+                    "Period": 0.002
+                },
+                "configure-parameter": "sawGenericInput-pedals.json"
+            },
+            {
                 "shared-library": "sawHaplyService",
                 "class-name": "mtsHaply",
                 "constructor-arg": {
@@ -50,31 +59,13 @@
             "name": "MTML",
             "type": "MTM_GENERIC",
             "component": "Haply",
-            "interface": "MTML",
-            "base_frame": {
-                "reference_frame": "HRSV",
-                "transform": [
-                    [-1.0, 0.0, 0.0, 0.18],
-                    [0.0, 0.866025404, 0.5, 0.4],
-                    [0.0, 0.5, -0.866025404, 0.475],
-                    [0.0, 0.0, 0.0, 1.0]
-                ]
-            }
+            "interface": "MTML"
         },
         {
             "name": "MTMR",
             "type": "MTM_GENERIC",
             "component": "Haply",
-            "interface": "MTMR",
-            "base_frame": {
-                "reference_frame": "HRSV",
-                "transform": [
-                    [-1.0, 0.0, 0.0, -0.18],
-                    [0.0, 0.866025404, 0.5, 0.4],
-                    [0.0, 0.5, -0.866025404, 0.475],
-                    [0.0, 0.0, 0.0, 1.0]
-                ]
-            }
+            "interface": "MTMR"
         },
         {
             "name": "PSM1",
@@ -108,7 +99,19 @@
     "consoles": [
         {
             "name": "console",
-            "input_type": "SIMULATED",
+            "input_type": "COMPONENTS",
+            "clutch": {
+                "component": "Pedals",
+                "interface": "Clutch"
+            },
+            "camera": {
+                "component": "Pedals",
+                "interface": "Camera"
+            },
+            "operator_present": {
+                "component": "Pedals",
+                "interface": "OperatorPresent"
+            },
             "teleop_PSMs": [
                 {
                     "MTM": "MTMR",

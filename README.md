@@ -81,6 +81,41 @@ ros2 launch dvrk_model arm.launch.py arm:=PSM1 generation:=Classic simulated:=fa
 
 In RViz, make sure you rotate the scene so the PSM is facing you. This is the orientation assumed in `system-MTMR-Haply-PSM1_KIN_SIMULATED-Teleop.json`.
 
+## Haply with Newton
+
+Launch the Haply console with a Newton patient cart, mono camera viewer, and
+PCsensor foot pedals:
+
+```sh
+ros2 launch haply_config haply_newton.launch.py
+```
+
+See [the Newton example](share/dvrk_simulation/README.md#newton) for setup,
+device mounting, foot pedals, and launch options.
+
+## Haply with Isaac Sim
+
+Launch the Haply console with an Isaac Sim patient cart and mono camera viewer:
+
+```sh
+ros2 launch haply_config haply_isaac_sim.launch.py
+```
+
+See [the Isaac Sim example](share/dvrk_simulation/README.md#isaac-sim) for setup,
+device mounting, and launch options.
+
+## Haply with PyBullet
+
+Launch the Haply console with a PyBullet patient cart, mono camera viewer, and
+PCsensor foot pedals:
+
+```sh
+ros2 launch haply_config haply_pybullet.launch.py
+```
+
+See [the PyBullet example](share/dvrk_simulation/README.md#pybullet) for setup,
+foot pedals, and launch options.
+
 ## Other "middleware"
 
 Besides ROS, the Haply component can also stream data to your application using the *sawOpenIGTLink* or *sawSocketStreamer* components.  See:

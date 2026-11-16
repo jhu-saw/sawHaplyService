@@ -13,19 +13,19 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
     directory = None
     try:
-        candidate = Path(get_package_share_directory("haply_config")) / "dvrk_newton"
+        candidate = Path(get_package_share_directory("haply_config")) / "dvrk_simulation"
         if candidate.is_dir():
             directory = candidate
     except Exception:
         pass
 
     if directory is None:
-        directory = Path(__file__).resolve().parent.parent / "dvrk_newton"
+        directory = Path(__file__).resolve().parent.parent / "dvrk_simulation"
 
     profile = SystemProfile(
         config=directory / "newton.yaml",
         cart_scene=directory / "ECM_PSM1_PSM2_PSM3_mono.yaml",
-        system_config=directory / "system-Haply-Newton.json",
+        system_config=directory / "system-Haply.json",
         cwd=directory,
     )
 
